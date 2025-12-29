@@ -11,6 +11,7 @@ import SettingsModal from '@/components/SettingsModal';
 import { getAISettings } from '@/components/SettingsModal';
 import CodeViewer from '@/components/CodeViewer';
 import AIPanel from '@/components/AIPanel';
+import CommitTimeline from '@/components/CommitTimeline';
 
 interface Repository {
     id: number;
@@ -251,27 +252,11 @@ export default function ExplorePage({ params }: { params: Promise<{ id: string }
                 {/* Sidebar - Commit Timeline */}
                 <aside className={styles.sidebar}>
                     <h3 className={styles.sidebarTitle}>Commit Timeline</h3>
-                    <div className={styles.timeline}>
-                        {commits.map((commit, index) => (
-                            <button
-                                key={commit.id}
-                                className={`${styles.timelineItem} ${index === currentIndex ? styles.timelineItemActive : ''}`}
-                                onClick={() => goToCommit(index)}
-                            >
-                                <div className={styles.timelineMarker}>
-                                    <div className={styles.timelineDot} />
-                                    {index < commits.length - 1 && <div className={styles.timelineLine} />}
-                                </div>
-                                <div className={styles.timelineContent}>
-                                    <span className={styles.timelineOrder}>#{index + 1}</span>
-                                    <span className={styles.timelineMessage}>
-                                        {commit.message.split('\n')[0].substring(0, 50)}
-                                        {commit.message.length > 50 ? '...' : ''}
-                                    </span>
-                                </div>
-                            </button>
-                        ))}
-                    </div>
+                    <CommitTimeline
+                        commits={commits}
+                        currentIndex={currentIndex}
+                        onSelect={goToCommit}
+                    />
                 </aside>
 
                 {/* Center - Code Viewer */}

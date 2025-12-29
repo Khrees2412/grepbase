@@ -6,6 +6,7 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createAnthropic } from '@ai-sdk/anthropic';
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import type { LanguageModel } from 'ai';
 
 export type AIProviderType = 'gemini' | 'openai' | 'anthropic' | 'ollama' | 'lmstudio';
@@ -54,7 +55,8 @@ export function createAIProvider(config: AIProviderConfig): LanguageModel {
         case 'ollama': {
             // Ollama uses OpenAI-compatible API
             const baseURL = config.baseUrl || 'http://localhost:11434/v1';
-            const ollama = createOpenAI({
+            const ollama = createOpenAICompatible({
+                name: 'ollama',
                 baseURL,
                 apiKey: 'ollama', // Ollama doesn't need a real key
             });
@@ -64,7 +66,8 @@ export function createAIProvider(config: AIProviderConfig): LanguageModel {
         case 'lmstudio': {
             // LMStudio uses OpenAI-compatible API
             const lmstudioURL = config.baseUrl || 'http://127.0.0.1:1234/v1';
-            const lmstudio = createOpenAI({
+            const lmstudio = createOpenAICompatible({
+                name: 'lmstudio',
                 baseURL: lmstudioURL,
                 apiKey: 'lmstudio', // LMStudio doesn't need a real key
             });

@@ -20,8 +20,9 @@ export async function POST(request: NextRequest) {
             provider, // AIProviderConfig
         } = body;
 
-        // Validate provider config
-        if (!provider?.type || (!provider?.apiKey && provider?.type !== 'ollama')) {
+        // Validate provider config (local providers don't need API keys)
+        const isLocalProvider = provider?.type === 'ollama' || provider?.type === 'lmstudio';
+        if (!provider?.type || (!provider?.apiKey && !isLocalProvider)) {
             return new Response(
                 JSON.stringify({ error: 'AI provider configuration is required' }),
                 { status: 400, headers: { 'Content-Type': 'application/json' } }

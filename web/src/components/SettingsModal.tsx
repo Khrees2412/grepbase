@@ -29,6 +29,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     });
     const [testing, setTesting] = useState(false);
     const [testResult, setTestResult] = useState<'success' | 'error' | null>(null);
+    const [testError, setTestError] = useState<string | null>(null);
 
     // Load settings from localStorage on mount
     useEffect(() => {
@@ -66,25 +67,45 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         }));
         setTestResult(null);
     }
-
     // Test the current provider connection
     async function testConnection() {
         setTesting(true);
         setTestResult(null);
+        setTestError(null);
 
         try {
-            // Simple validation - just check if API key is provided (for non-Ollama)
             const currentSettings = settings[activeProvider];
-            if (activeProvider !== 'ollama' && activeProvider !== 'lmstudio' && !currentSettings.apiKey) {
+            const isLocalProvider = activeProvider === 'ollama' || activeProvider === 'lmstudio';
+
+            // Validate API key for non-local providers
+            if (!isLocalProvider && !currentSettings.apiKey) {
                 throw new Error('API key is required');
             }
 
-            // For a real test, we could make a minimal API call
-            // For now, just validate the input
-            await new Promise(resolve => setTimeout(resolve, 500));
+            // Use our backend API to test connection (avoids CORS issues)
+            const response = await fetch('/api/test-connection', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    provider: activeProvider,
+                    baseUrl: currentSettings.baseUrl,
+                    apiKey: currentSettings.apiKey,
+                }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Connection failed');
+            }
+
             setTestResult('success');
-        } catch {
+            if (data.models?.length) {
+                setTestError(`Found ${data.models.length} model(s): ${data.models.slice(0, 3).join(', ')}${data.models.length > 3 ? '...' : ''}`);
+            }
+        } catch (err) {
             setTestResult('error');
+            setTestError(err instanceof Error ? err.message : 'Connection failed');
         } finally {
             setTesting(false);
         }
@@ -156,6 +177,23 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                             </div>
                         )}
 
+                        {/* Custom Model Input for local providers */}
+                        {(activeProvider === 'ollama' || activeProvider === 'lmstudio') && (
+                            <div className={styles.field}>
+                                <label className={styles.label}>Custom Model Name (optional)</label>
+                                <input
+                                    type="text"
+                                    className="input"
+                                    placeholder="e.g., deepseek-r1:8b, qwen2.5:7b"
+                                    value={currentSettings.model}
+                                    onChange={e => updateSetting(activeProvider, 'model', e.target.value)}
+                                />
+                                <small style={{ color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
+                                    Leave empty to use default, or enter your model name
+                                </small>
+                            </div>
+                        )}
+
                         <div className={styles.field}>
                             <label className={styles.label}>Model</label>
                             <select
@@ -196,7 +234,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                             {testResult === 'error' && (
                                 <span className={styles.testError}>
                                     <AlertCircle size={16} />
-                                    Connection failed
+                                    {testError || 'Connection failed'}
                                 </span>
                             )}
                         </div>
