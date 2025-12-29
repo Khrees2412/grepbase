@@ -34,6 +34,8 @@ interface FileData {
     content: string | null;
     language: string;
     size: number;
+    hasContent?: boolean;
+    shouldFetchContent?: boolean;
 }
 
 export default function ExplorePage({ params }: { params: Promise<{ id: string }> }) {
@@ -47,6 +49,7 @@ export default function ExplorePage({ params }: { params: Promise<{ id: string }
     const [selectedFile, setSelectedFile] = useState<FileData | null>(null);
     const [loading, setLoading] = useState(true);
     const [loadingFiles, setLoadingFiles] = useState(false);
+    const [loadingContent, setLoadingContent] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
     const [showAIPanel, setShowAIPanel] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -82,16 +85,19 @@ export default function ExplorePage({ params }: { params: Promise<{ id: string }
 
         async function fetchFiles() {
             setLoadingFiles(true);
+            setSelectedFile(null);
             try {
                 const res = await fetch(`/api/repos/${id}/commits/${currentCommit.sha}`);
                 const data = await res.json();
 
                 if (res.ok) {
                     setFiles(data.files || []);
-                    // Auto-select first code file
-                    const codeFile = data.files?.find((f: FileData) => f.content);
-                    if (codeFile) {
-                        setSelectedFile(codeFile);
+                    // Auto-select first file that can have content loaded
+                    const firstLoadable = data.files?.find((f: FileData) =>
+                        f.shouldFetchContent || f.hasContent
+                    );
+                    if (firstLoadable) {
+                        selectFile(firstLoadable);
                     }
                 }
             } catch (err) {
@@ -102,7 +108,40 @@ export default function ExplorePage({ params }: { params: Promise<{ id: string }
         }
 
         fetchFiles();
-    }, [currentCommit, repository, id]);
+    }, [currentCommit?.sha, repository, id]);
+
+    // Select file and load content lazily
+    async function selectFile(file: FileData) {
+        // If we already have content, just select it
+        if (file.content) {
+            setSelectedFile(file);
+            return;
+        }
+
+        // Fetch content lazily
+        setLoadingContent(true);
+        setSelectedFile({ ...file, content: null }); // Show file as selected while loading
+
+        try {
+            const res = await fetch(
+                `/api/repos/${id}/commits/${currentCommit?.sha}/content?path=${encodeURIComponent(file.path)}`
+            );
+            const data = await res.json();
+
+            if (res.ok && data.content) {
+                // Update file in files array with content
+                const updatedFile = { ...file, content: data.content, hasContent: true };
+                setFiles(prev => prev.map(f =>
+                    f.path === file.path ? updatedFile : f
+                ));
+                setSelectedFile(updatedFile);
+            }
+        } catch (err) {
+            console.error('Failed to fetch file content:', err);
+        } finally {
+            setLoadingContent(false);
+        }
+    }
 
     // Navigation
     function goToCommit(index: number) {
@@ -267,11 +306,11 @@ export default function ExplorePage({ params }: { params: Promise<{ id: string }
                             <>
                                 {/* File List */}
                                 <div className={styles.fileList}>
-                                    {files.filter(f => f.content).slice(0, 20).map((file) => (
+                                    {files.filter(f => f.shouldFetchContent || f.hasContent).slice(0, 30).map((file) => (
                                         <button
                                             key={file.path}
                                             className={`${styles.fileItem} ${selectedFile?.path === file.path ? styles.fileItemActive : ''}`}
-                                            onClick={() => setSelectedFile(file)}
+                                            onClick={() => selectFile(file)}
                                         >
                                             <FileCode size={14} />
                                             <span>{file.path.split('/').pop()}</span>
@@ -281,9 +320,14 @@ export default function ExplorePage({ params }: { params: Promise<{ id: string }
 
                                 {/* Code Display */}
                                 <div className={styles.codeDisplay}>
-                                    {selectedFile ? (
+                                    {loadingContent ? (
+                                        <div className={styles.loadingFiles}>
+                                            <Loader2 size={24} className={styles.spinner} />
+                                            <p>Loading content...</p>
+                                        </div>
+                                    ) : selectedFile?.content ? (
                                         <CodeViewer
-                                            code={selectedFile.content || ''}
+                                            code={selectedFile.content}
                                             language={selectedFile.language}
                                             filename={selectedFile.path}
                                         />

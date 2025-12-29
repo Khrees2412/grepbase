@@ -7,7 +7,6 @@ import { db, commits, repositories, files } from '@/db';
 import { eq, and } from 'drizzle-orm';
 import {
     fetchFilesAtCommit,
-    fetchFileContent,
     getLanguageFromPath,
 } from '@/services/github';
 
@@ -65,15 +64,34 @@ export async function GET(
 
         // Check if we have cached files for this commit
         const cachedFiles = await db
-            .select()
+            .select({
+                id: files.id,
+                path: files.path,
+                size: files.size,
+                language: files.language,
+                hasContent: files.content,
+            })
             .from(files)
             .where(eq(files.commitId, commit[0].id));
 
         if (cachedFiles.length > 0) {
+            // Return metadata only (no content) to prevent stack overflow
+            const fileList = cachedFiles.map(f => ({
+                id: f.id,
+                path: f.path,
+                size: f.size,
+                language: f.language,
+                hasContent: !!f.hasContent,
+            }));
+
             return NextResponse.json({
                 commit: commit[0],
-                files: cachedFiles,
+                files: fileList,
                 cached: true,
+            }, {
+                headers: {
+                    'Cache-Control': 'public, max-age=3600', // Cache for 1 hour
+                },
             });
         }
 
@@ -81,35 +99,48 @@ export async function GET(
         const { owner, name } = repo[0];
         const githubFiles = await fetchFilesAtCommit(owner, name, sha);
 
-        // Filter to code files and fetch content for small files
+        // Filter to code files - but don't fetch content yet (lazy loading)
         const filesToSave = [];
         for (const file of githubFiles) {
             const ext = '.' + (file.path.split('.').pop() || '');
             const isCodeFile = CODE_EXTENSIONS.includes(ext.toLowerCase());
             const isSmallEnough = file.size <= MAX_FILE_SIZE;
 
-            let content = null;
-            if (isCodeFile && isSmallEnough) {
-                content = await fetchFileContent(owner, name, sha, file.path);
-            }
-
             filesToSave.push({
                 commitId: commit[0].id,
                 path: file.path,
-                content,
+                content: null, // Content will be fetched lazily
                 size: file.size,
                 language: getLanguageFromPath(file.path),
+                shouldFetchContent: isCodeFile && isSmallEnough,
             });
         }
 
-        // Save to database
-        if (filesToSave.length > 0) {
-            await db.insert(files).values(filesToSave);
+        // Save file metadata to database (without content)
+        const dbFiles = filesToSave.map(f => ({
+            commitId: f.commitId,
+            path: f.path,
+            content: null,
+            size: f.size,
+            language: f.language,
+        }));
+
+        if (dbFiles.length > 0) {
+            await db.insert(files).values(dbFiles);
         }
+
+        // Return file list with metadata only
+        const fileList = filesToSave.map(f => ({
+            path: f.path,
+            size: f.size,
+            language: f.language,
+            hasContent: false,
+            shouldFetchContent: f.shouldFetchContent,
+        }));
 
         return NextResponse.json({
             commit: commit[0],
-            files: filesToSave,
+            files: fileList,
             cached: false,
         });
     } catch (error) {

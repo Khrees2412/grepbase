@@ -29,7 +29,7 @@ const DEFAULT_MODELS: Record<AIProviderType, string> = {
 /**
  * Create an AI provider instance based on configuration
  */
-export function createAIProvider(config: AIProviderConfig): LanguageModelV1 {
+export function createAIProvider(config: AIProviderConfig): LanguageModel {
     const model = config.model || DEFAULT_MODELS[config.type];
 
     switch (config.type) {
