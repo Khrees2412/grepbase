@@ -1,0 +1,381 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+}
+
+/* Header */
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-md) var(--space-lg);
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-subtle);
+    flex-shrink: 0;
+}
+
+.headerLeft,
+.headerRight {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.repoInfo {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding-left: var(--space-md);
+    border-left: 1px solid var(--border-subtle);
+    margin-left: var(--space-sm);
+}
+
+.repoInfo svg {
+    color: var(--accent-primary);
+}
+
+.repoName {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.headerCenter {
+    flex: 1;
+    max-width: 400px;
+    margin: 0 var(--space-lg);
+}
+
+.progress {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+}
+
+.progressText {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    text-align: center;
+}
+
+.progressBar {
+    height: 4px;
+    background: var(--bg-tertiary);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.progressFill {
+    height: 100%;
+    background: var(--accent-gradient);
+    transition: width var(--transition-default);
+}
+
+.active {
+    background: var(--accent-primary) !important;
+    color: white !important;
+}
+
+/* Main Layout */
+.main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+/* Sidebar */
+.sidebar {
+    width: 280px;
+    background: var(--bg-secondary);
+    border-right: 1px solid var(--border-subtle);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.sidebarTitle {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    padding: var(--space-md) var(--space-lg);
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.timeline {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--space-md);
+}
+
+.timelineItem {
+    display: flex;
+    gap: var(--space-md);
+    padding: var(--space-sm);
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    text-align: left;
+    width: 100%;
+    font-family: inherit;
+    color: inherit;
+    transition: background var(--transition-fast);
+}
+
+.timelineItem:hover {
+    background: var(--bg-tertiary);
+}
+
+.timelineItemActive {
+    background: rgba(99, 102, 241, 0.15);
+}
+
+.timelineItemActive .timelineDot {
+    background: var(--accent-primary);
+    box-shadow: 0 0 8px var(--accent-primary);
+}
+
+.timelineMarker {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 16px;
+    flex-shrink: 0;
+}
+
+.timelineDot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--text-muted);
+    flex-shrink: 0;
+}
+
+.timelineLine {
+    width: 2px;
+    flex: 1;
+    min-height: 24px;
+    background: var(--border-default);
+    margin-top: 4px;
+}
+
+.timelineContent {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.timelineOrder {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--accent-primary);
+}
+
+.timelineMessage {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Content Area */
+.content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-width: 0;
+}
+
+.commitInfo {
+    padding: var(--space-lg);
+    border-bottom: 1px solid var(--border-subtle);
+    flex-shrink: 0;
+}
+
+.commitHeader {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-sm);
+    color: var(--text-muted);
+}
+
+.commitSha {
+    font-size: 0.85rem;
+    color: var(--accent-primary);
+    background: rgba(99, 102, 241, 0.1);
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+}
+
+.commitMessage {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--space-sm);
+}
+
+.commitMeta {
+    display: flex;
+    gap: var(--space-lg);
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.commitMeta span {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+}
+
+/* Code Area */
+.codeArea {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+}
+
+.loadingFiles {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-md);
+    color: var(--text-secondary);
+}
+
+.fileList {
+    width: 200px;
+    border-right: 1px solid var(--border-subtle);
+    overflow-y: auto;
+    padding: var(--space-sm);
+    flex-shrink: 0;
+}
+
+.fileItem {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-sm) var(--space-md);
+    width: 100%;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    font-family: var(--font-mono);
+    color: var(--text-secondary);
+    cursor: pointer;
+    text-align: left;
+    transition: all var(--transition-fast);
+}
+
+.fileItem:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.fileItemActive {
+    background: rgba(99, 102, 241, 0.15);
+    color: var(--accent-primary);
+}
+
+.fileItem span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.codeDisplay {
+    flex: 1;
+    overflow: auto;
+    background: var(--bg-primary);
+}
+
+.noFile {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-md);
+    color: var(--text-muted);
+}
+
+/* Navigation */
+.navigation {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-md) var(--space-lg);
+    border-top: 1px solid var(--border-subtle);
+    background: var(--bg-secondary);
+    flex-shrink: 0;
+}
+
+.navInfo {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+/* AI Panel */
+.aiPanel {
+    width: 400px;
+    border-left: 1px solid var(--border-subtle);
+    background: var(--bg-secondary);
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+/* Loading/Error States */
+.loadingState,
+.errorState {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-lg);
+    color: var(--text-secondary);
+}
+
+.spinner {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+    .aiPanel {
+        width: 320px;
+    }
+}
+
+@media (max-width: 900px) {
+    .sidebar {
+        width: 220px;
+    }
+
+    .aiPanel {
+        position: fixed;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        z-index: 50;
+        box-shadow: -4px 0 24px rgba(0, 0, 0, 0.3);
+    }
+}

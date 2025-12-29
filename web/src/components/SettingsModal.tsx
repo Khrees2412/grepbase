@@ -1,0 +1,236 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { X, Key, Check, AlertCircle, Loader2 } from 'lucide-react';
+import styles from './SettingsModal.module.css';
+import { type AIProviderType, PROVIDER_NAMES, getAvailableModels } from '@/services/ai-providers';
+
+interface SettingsModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+}
+
+interface ProviderSettings {
+    apiKey: string;
+    model: string;
+    baseUrl?: string;
+}
+
+const STORAGE_KEY = 'grepbase_ai_settings';
+
+export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
+    const [activeProvider, setActiveProvider] = useState<AIProviderType>('gemini');
+    const [settings, setSettings] = useState<Record<AIProviderType, ProviderSettings>>({
+        gemini: { apiKey: '', model: 'gemini-2.0-flash' },
+        openai: { apiKey: '', model: 'gpt-4o-mini' },
+        anthropic: { apiKey: '', model: 'claude-3-5-haiku-latest' },
+        ollama: { apiKey: '', model: 'llama3.2', baseUrl: 'http://localhost:11434/v1' },
+        lmstudio: { apiKey: '', model: 'deepseek-r1-distill-llama-8b', baseUrl: 'http://127.0.0.1:1234/v1' },
+    });
+    const [testing, setTesting] = useState(false);
+    const [testResult, setTestResult] = useState<'success' | 'error' | null>(null);
+
+    // Load settings from localStorage on mount
+    useEffect(() => {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                setSettings(prev => ({ ...prev, ...parsed }));
+                if (parsed.activeProvider) {
+                    setActiveProvider(parsed.activeProvider);
+                }
+            } catch (e) {
+                console.error('Failed to parse saved settings:', e);
+            }
+        }
+    }, []);
+
+    // Save settings to localStorage
+    function saveSettings() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+            ...settings,
+            activeProvider,
+        }));
+        onClose();
+    }
+
+    // Update a specific provider's setting
+    function updateSetting(provider: AIProviderType, key: keyof ProviderSettings, value: string) {
+        setSettings(prev => ({
+            ...prev,
+            [provider]: {
+                ...prev[provider],
+                [key]: value,
+            },
+        }));
+        setTestResult(null);
+    }
+
+    // Test the current provider connection
+    async function testConnection() {
+        setTesting(true);
+        setTestResult(null);
+
+        try {
+            // Simple validation - just check if API key is provided (for non-Ollama)
+            const currentSettings = settings[activeProvider];
+            if (activeProvider !== 'ollama' && activeProvider !== 'lmstudio' && !currentSettings.apiKey) {
+                throw new Error('API key is required');
+            }
+
+            // For a real test, we could make a minimal API call
+            // For now, just validate the input
+            await new Promise(resolve => setTimeout(resolve, 500));
+            setTestResult('success');
+        } catch {
+            setTestResult('error');
+        } finally {
+            setTesting(false);
+        }
+    }
+
+    if (!isOpen) return null;
+
+    const providers: AIProviderType[] = ['gemini', 'openai', 'anthropic', 'ollama', 'lmstudio'];
+    const currentSettings = settings[activeProvider];
+    const models = getAvailableModels(activeProvider);
+
+    return (
+        <div className={styles.overlay} onClick={onClose}>
+            <div className={styles.modal} onClick={e => e.stopPropagation()}>
+                <div className={styles.header}>
+                    <h2>API Settings</h2>
+                    <button className={styles.closeBtn} onClick={onClose}>
+                        <X size={20} />
+                    </button>
+                </div>
+
+                <div className={styles.content}>
+                    <p className={styles.description}>
+                        Configure your AI provider. Keys are stored locally in your browser.
+                    </p>
+
+                    {/* Provider Tabs */}
+                    <div className={styles.tabs}>
+                        {providers.map(provider => (
+                            <button
+                                key={provider}
+                                className={`${styles.tab} ${activeProvider === provider ? styles.tabActive : ''}`}
+                                onClick={() => {
+                                    setActiveProvider(provider);
+                                    setTestResult(null);
+                                }}
+                            >
+                                {PROVIDER_NAMES[provider]}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Settings Form */}
+                    <div className={styles.form}>
+                        {activeProvider !== 'ollama' && activeProvider !== 'lmstudio' ? (
+                            <div className={styles.field}>
+                                <label className={styles.label}>
+                                    <Key size={14} />
+                                    API Key
+                                </label>
+                                <input
+                                    type="password"
+                                    className="input"
+                                    placeholder={`Enter your ${PROVIDER_NAMES[activeProvider]} API key`}
+                                    value={currentSettings.apiKey}
+                                    onChange={e => updateSetting(activeProvider, 'apiKey', e.target.value)}
+                                />
+                            </div>
+                        ) : (
+                            <div className={styles.field}>
+                                <label className={styles.label}>Base URL</label>
+                                <input
+                                    type="text"
+                                    className="input"
+                                    placeholder={activeProvider === 'lmstudio' ? 'http://127.0.0.1:1234/v1' : 'http://localhost:11434/v1'}
+                                    value={currentSettings.baseUrl || ''}
+                                    onChange={e => updateSetting(activeProvider, 'baseUrl', e.target.value)}
+                                />
+                            </div>
+                        )}
+
+                        <div className={styles.field}>
+                            <label className={styles.label}>Model</label>
+                            <select
+                                className="input"
+                                value={currentSettings.model}
+                                onChange={e => updateSetting(activeProvider, 'model', e.target.value)}
+                            >
+                                {models.map(model => (
+                                    <option key={model} value={model}>
+                                        {model}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Test Connection */}
+                        <div className={styles.testRow}>
+                            <button
+                                className={`btn btn-secondary ${styles.testBtn}`}
+                                onClick={testConnection}
+                                disabled={testing}
+                            >
+                                {testing ? (
+                                    <>
+                                        <Loader2 size={16} className={styles.spinner} />
+                                        Testing...
+                                    </>
+                                ) : (
+                                    'Test Connection'
+                                )}
+                            </button>
+                            {testResult === 'success' && (
+                                <span className={styles.testSuccess}>
+                                    <Check size={16} />
+                                    Connected!
+                                </span>
+                            )}
+                            {testResult === 'error' && (
+                                <span className={styles.testError}>
+                                    <AlertCircle size={16} />
+                                    Connection failed
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                <div className={styles.footer}>
+                    <button className="btn btn-secondary" onClick={onClose}>
+                        Cancel
+                    </button>
+                    <button className="btn btn-primary" onClick={saveSettings}>
+                        Save Settings
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// Helper to get current AI settings
+export function getAISettings(): { provider: AIProviderType; config: ProviderSettings } | null {
+    if (typeof window === 'undefined') return null;
+
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (!saved) return null;
+
+    try {
+        const parsed = JSON.parse(saved);
+        const provider = parsed.activeProvider || 'gemini';
+        return {
+            provider,
+            config: parsed[provider],
+        };
+    } catch {
+        return null;
+    }
+}

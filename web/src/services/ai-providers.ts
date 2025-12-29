@@ -6,9 +6,9 @@
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createAnthropic } from '@ai-sdk/anthropic';
-import type { LanguageModelV1 } from 'ai';
+import type { LanguageModel } from 'ai';
 
-export type AIProviderType = 'gemini' | 'openai' | 'anthropic' | 'ollama';
+export type AIProviderType = 'gemini' | 'openai' | 'anthropic' | 'ollama' | 'lmstudio';
 
 export interface AIProviderConfig {
     type: AIProviderType;
@@ -23,6 +23,7 @@ const DEFAULT_MODELS: Record<AIProviderType, string> = {
     openai: 'gpt-4o-mini',
     anthropic: 'claude-3-5-haiku-latest',
     ollama: 'llama3.2',
+    lmstudio: 'deepseek-r1-distill-llama-8b',
 };
 
 /**
@@ -60,6 +61,16 @@ export function createAIProvider(config: AIProviderConfig): LanguageModelV1 {
             return ollama(model);
         }
 
+        case 'lmstudio': {
+            // LMStudio uses OpenAI-compatible API
+            const lmstudioURL = config.baseUrl || 'http://127.0.0.1:1234/v1';
+            const lmstudio = createOpenAI({
+                baseURL: lmstudioURL,
+                apiKey: 'lmstudio', // LMStudio doesn't need a real key
+            });
+            return lmstudio(model);
+        }
+
         default:
             throw new Error(`Unknown provider type: ${config.type}`);
     }
@@ -78,6 +89,8 @@ export function getAvailableModels(type: AIProviderType): string[] {
             return ['claude-3-5-sonnet-latest', 'claude-3-5-haiku-latest', 'claude-3-opus-latest'];
         case 'ollama':
             return ['llama3.2', 'llama3.1', 'codellama', 'mistral', 'phi3'];
+        case 'lmstudio':
+            return ['deepseek-r1-distill-llama-8b', 'meta-llama-3.1-8b-instruct'];
         default:
             return [];
     }
@@ -91,4 +104,5 @@ export const PROVIDER_NAMES: Record<AIProviderType, string> = {
     openai: 'OpenAI',
     anthropic: 'Anthropic',
     ollama: 'Ollama (Local)',
+    lmstudio: 'LMStudio (Local)',
 };

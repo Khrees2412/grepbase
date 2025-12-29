@@ -1,0 +1,67 @@
+.container {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background: #0d1117;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-sm) var(--space-md);
+    background: rgba(255, 255, 255, 0.03);
+    border-bottom: 1px solid var(--border-subtle);
+    flex-shrink: 0;
+}
+
+.filename {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.language {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.code {
+    flex: 1;
+    overflow: auto;
+    padding: var(--space-md);
+}
+
+.code pre {
+    margin: 0;
+    padding: 0;
+    background: transparent !important;
+    font-family: var(--font-mono);
+    font-size: 0.875rem;
+    line-height: 1.6;
+}
+
+.code code {
+    background: transparent;
+    padding: 0;
+}
+
+/* Line numbers styling from Shiki */
+.code .line {
+    display: block;
+}
+
+.loading {
+    flex: 1;
+    padding: var(--space-lg);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+}
+
+.skeleton {
+    height: 20px;
+    width: 100%;
+}

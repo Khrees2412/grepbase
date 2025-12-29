@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:generate": "drizzle-kit generate",
+    "db:push": "drizzle-kit push"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.1",
@@ -36,6 +38,7 @@
     "unrs-resolver"
   ],
   "trustedDependencies": [
+    "better-sqlite3",
     "sharp",
     "unrs-resolver"
   ]
