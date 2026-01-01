@@ -20,9 +20,9 @@ export interface AIProviderConfig {
 
 // Default models for each provider
 const DEFAULT_MODELS: Record<AIProviderType, string> = {
-    gemini: 'gemini-2.0-flash',
-    openai: 'gpt-4o-mini',
-    anthropic: 'claude-3-5-haiku-latest',
+    gemini: 'gemini-3-flash-preview',
+    openai: 'gpt-5.2',
+    anthropic: 'claude-sonnet-4-5-20250929',
     ollama: 'llama3.2',
     lmstudio: 'deepseek-r1-distill-llama-8b',
 };
@@ -85,15 +85,35 @@ export function createAIProvider(config: AIProviderConfig): LanguageModel {
 export function getAvailableModels(type: AIProviderType): string[] {
     switch (type) {
         case 'gemini':
-            return ['gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.5-flash'];
+            return [
+                'gemini-3-flash-preview',
+                'gemini-3-pro-preview',
+                'gemini-2.0-flash',
+                'gemini-2.0-pro-exp-02-05',
+                'gemini-1.5-pro',
+            ];
         case 'openai':
-            return ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'];
+            return [
+                'gpt-5.2',
+                'gpt-5.2-chat-latest',
+                'gpt-5.1',
+                'gpt-5',
+                'gpt-4o',
+                'o3-mini',
+                'o1',
+            ];
         case 'anthropic':
-            return ['claude-3-5-sonnet-latest', 'claude-3-5-haiku-latest', 'claude-3-opus-latest'];
+            return [
+                'claude-opus-4-5-20251101',
+                'claude-sonnet-4-5-20250929',
+                'claude-haiku-4-5-20251001',
+                'claude-3-5-sonnet-20241022',
+                'claude-3-5-haiku-20241022',
+            ];
         case 'ollama':
-            return ['llama3.2', 'llama3.1', 'codellama', 'mistral', 'phi3'];
+            return ['llama3.2', 'llama3.1', 'codellama', 'mistral', 'phi3', 'qwen2.5'];
         case 'lmstudio':
-            return ['deepseek-r1-distill-llama-8b', 'meta-llama-3.1-8b-instruct'];
+            return ['deepseek-r1-distill-llama-8b', 'meta-llama-3.1-8b-instruct', 'qwen2.5-7b-instruct'];
         default:
             return [];
     }
@@ -104,8 +124,8 @@ export function getAvailableModels(type: AIProviderType): string[] {
  */
 export const PROVIDER_NAMES: Record<AIProviderType, string> = {
     gemini: 'Google Gemini',
-    openai: 'OpenAI',
-    anthropic: 'Anthropic',
+    openai: 'OpenAI GPT',
+    anthropic: 'Anthropic Claude',
     ollama: 'Ollama (Local)',
     lmstudio: 'LMStudio (Local)',
 };

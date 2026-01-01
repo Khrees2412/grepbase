@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Sparkles, Send, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
+import { Sparkles, Send, Loader2, AlertCircle, RefreshCw, X, Clock } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 import styles from './AIPanel.module.css';
 import { getAISettings } from './SettingsModal';
 
@@ -33,13 +34,21 @@ export default function AIPanel({ repository, commit, totalCommits, currentIndex
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [streaming, setStreaming] = useState(false);
+    const [elapsedTime, setElapsedTime] = useState(0);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
+    const abortControllerRef = useRef<AbortController | null>(null);
+    const timerRef = useRef<NodeJS.Timeout | null>(null);
 
     // Reset messages when commit changes
     useEffect(() => {
+        // Cancel any in-flight request
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+        }
         setMessages([]);
         setError(null);
+        setElapsedTime(0);
     }, [commit.sha]);
 
     // Scroll to bottom on new messages
@@ -54,9 +63,22 @@ export default function AIPanel({ repository, commit, totalCommits, currentIndex
             return;
         }
 
+        // Cancel previous request if any
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+
         setLoading(true);
         setError(null);
         setMessages([]);
+        setElapsedTime(0);
+
+        // Start timer
+        const startTime = Date.now();
+        timerRef.current = setInterval(() => {
+            setElapsedTime(Math.floor((Date.now() - startTime) / 1000));
+        }, 1000);
 
         try {
             const response = await fetch('/api/explain', {
@@ -73,6 +95,7 @@ export default function AIPanel({ repository, commit, totalCommits, currentIndex
                         model: settings.config.model,
                     },
                 }),
+                signal: abortControllerRef.current.signal,
             });
 
             if (!response.ok) {
@@ -102,9 +125,25 @@ export default function AIPanel({ repository, commit, totalCommits, currentIndex
 
             setStreaming(false);
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Something went wrong');
+            if (err instanceof Error && err.name === 'AbortError') {
+                // Request was cancelled, don't show error
+                return;
+            }
+            const message = err instanceof Error ? err.message : 'Something went wrong';
+            // Provide helpful hints for common errors
+            if (message.includes('fetch')) {
+                setError('Connection failed. Is your AI provider running?');
+            } else if (message.includes('API key')) {
+                setError('Invalid API key. Check your settings.');
+            } else {
+                setError(message);
+            }
         } finally {
             setLoading(false);
+            if (timerRef.current) {
+                clearInterval(timerRef.current);
+                timerRef.current = null;
+            }
         }
     }
 
@@ -217,6 +256,13 @@ export default function AIPanel({ repository, commit, totalCommits, currentIndex
                     <div className={styles.error}>
                         <AlertCircle size={16} />
                         <span>{error}</span>
+                        <button
+                            className={styles.dismissBtn}
+                            onClick={() => setError(null)}
+                            title="Dismiss"
+                        >
+                            <X size={14} />
+                        </button>
                     </div>
                 )}
 
@@ -229,10 +275,16 @@ export default function AIPanel({ repository, commit, totalCommits, currentIndex
                                 className={`${styles.message} ${message.role === 'user' ? styles.userMessage : styles.assistantMessage
                                     }`}
                             >
-                                <div className={styles.messageContent}>
-                                    {message.content || (streaming && index === messages.length - 1 ? (
-                                        <span className={styles.cursor}>▊</span>
-                                    ) : null)}
+                                <div className={`${styles.messageContent} ${message.role === 'assistant' ? styles.markdown : ''}`}>
+                                    {message.role === 'assistant' ? (
+                                        message.content ? (
+                                            <ReactMarkdown>{message.content}</ReactMarkdown>
+                                        ) : streaming && index === messages.length - 1 ? (
+                                            <span className={styles.cursor}>▊</span>
+                                        ) : null
+                                    ) : (
+                                        message.content
+                                    )}
                                 </div>
                             </div>
                         ))}
@@ -244,7 +296,13 @@ export default function AIPanel({ repository, commit, totalCommits, currentIndex
                 {loading && !streaming && (
                     <div className={styles.loading}>
                         <Loader2 size={20} className={styles.spinner} />
-                        <span>Thinking...</span>
+                        <span>Generating...</span>
+                        {elapsedTime > 0 && (
+                            <span className={styles.timer}>
+                                <Clock size={12} />
+                                {elapsedTime}s
+                            </span>
+                        )}
                     </div>
                 )}
             </div>

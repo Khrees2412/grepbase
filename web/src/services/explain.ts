@@ -62,12 +62,13 @@ Be concise but thorough. Use markdown formatting.`;
 
 **Files Changed:** ${commit.filesChanged.length > 0 ? commit.filesChanged.join(', ') : 'Unknown'}
 
-${commit.diff ? `**Diff:**\n\`\`\`diff\n${commit.diff.substring(0, 3000)}${commit.diff.length > 3000 ? '\n... (truncated)' : ''}\n\`\`\`` : ''}`;
+${commit.diff ? `**Diff:**\n\`\`\`diff\n${commit.diff.substring(0, 2000)}${commit.diff.length > 2000 ? '\n... (truncated)' : ''}\n\`\`\`` : ''}`;
 
     return streamText({
         model,
         system: systemPrompt,
         prompt: userPrompt,
+        maxOutputTokens: 1000, // Limit response length for faster generation
     });
 }
 
@@ -105,6 +106,7 @@ ${file.content.substring(0, 8000)}${file.content.length > 8000 ? '\n// ... (trun
         model,
         system: systemPrompt,
         prompt: userPrompt,
+        maxOutputTokens: 1200, // Limit response length for faster generation
     });
 }
 
@@ -138,6 +140,7 @@ Please explain:
         model,
         system: systemPrompt,
         prompt: userPrompt,
+        maxOutputTokens: 1500, // Limit response length for faster generation
     });
 }
 
@@ -174,5 +177,6 @@ ${contextText}`;
         model,
         system: systemPrompt,
         prompt: question,
+        maxOutputTokens: 800, // Limit response length for faster generation
     });
 }

@@ -21,9 +21,9 @@ const STORAGE_KEY = 'grepbase_ai_settings';
 export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     const [activeProvider, setActiveProvider] = useState<AIProviderType>('gemini');
     const [settings, setSettings] = useState<Record<AIProviderType, ProviderSettings>>({
-        gemini: { apiKey: '', model: 'gemini-2.0-flash' },
-        openai: { apiKey: '', model: 'gpt-4o-mini' },
-        anthropic: { apiKey: '', model: 'claude-3-5-haiku-latest' },
+        gemini: { apiKey: '', model: 'gemini-3-flash-preview' },
+        openai: { apiKey: '', model: 'gpt-5.2' },
+        anthropic: { apiKey: '', model: 'claude-sonnet-4-5-20250929' },
         ollama: { apiKey: '', model: 'llama3.2', baseUrl: 'http://localhost:11434/v1' },
         lmstudio: { apiKey: '', model: 'deepseek-r1-distill-llama-8b', baseUrl: 'http://127.0.0.1:1234/v1' },
     });
