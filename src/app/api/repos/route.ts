@@ -1,6 +1,6 @@
 /**
  * API routes for repository management
- * POST - Fetch and cache a new repository
+ * POST - Fetch and cache a new repository (non-blocking with waitUntil)
  * GET - List all cached repositories
  */
 
@@ -15,6 +15,7 @@ import { rateLimiter } from '@/lib/rate-limit';
 import { RATE_LIMITS } from '@/lib/constants';
 import { analytics } from '@/lib/analytics';
 import { getRequestContext } from '@cloudflare/next-on-pages';
+import { processRepoIngestion } from '@/services/ingest';
 
 export const runtime = 'edge';
 
@@ -112,7 +113,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ repository: existing[0], cached: true });
         }
 
-        // Queue the repository ingestion for background processing
+        // Create job for background processing
         const jobId = crypto.randomUUID();
         const now = new Date();
 
@@ -126,40 +127,24 @@ export async function POST(request: NextRequest) {
             updatedAt: now,
         });
 
-        // Send to queue
-        try {
-            const { env } = getRequestContext<{ REPO_INGEST_QUEUE: Queue }>();
-            await env.REPO_INGEST_QUEUE.send({
+        // Process in background using waitUntil (non-blocking)
+        const { ctx } = getRequestContext();
+        ctx.waitUntil(
+            processRepoIngestion({
                 jobId,
                 url: sanitizedUrl,
                 clientId,
-            });
+            })
+        );
 
-            requestLogger.info({ jobId, owner, repo: repoName }, 'Repository ingest job queued');
+        requestLogger.info({ jobId, owner, repo: repoName }, 'Repository ingest started in background');
 
-            return NextResponse.json({
-                jobId,
-                status: 'pending',
-                message: 'Repository ingestion queued for background processing',
-            }, { status: 202 });
-        } catch (queueError) {
-            requestLogger.error({ error: queueError }, 'Failed to queue ingest job');
+        return NextResponse.json({
+            jobId,
+            status: 'processing',
+            message: 'Repository ingestion started in background',
+        }, { status: 202 });
 
-            // Update job status
-            await db
-                .update(ingestJobs)
-                .set({
-                    status: 'failed',
-                    error: 'Failed to queue job',
-                    updatedAt: new Date(),
-                })
-                .where(eq(ingestJobs.jobId, jobId));
-
-            return NextResponse.json(
-                { error: 'Failed to queue repository ingestion' },
-                { status: 500 }
-            );
-        }
     } catch (error) {
         const duration = Date.now() - startTime;
 

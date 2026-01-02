@@ -5,5 +5,4 @@ interface CloudflareEnv {
     grepbase_db: D1Database;
     grepbase_cache: KVNamespace;
     ANALYTICS: AnalyticsEngineDataset;
-    REPO_INGEST_QUEUE: Queue;
 }
