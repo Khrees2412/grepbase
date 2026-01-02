@@ -4,7 +4,7 @@
  */
 
 import { streamText } from 'ai';
-import { createAIProvider, type AIProviderConfig } from './ai-providers';
+import { createAIProviderAsync, type AIProviderConfig } from './ai-providers';
 
 export interface CommitContext {
     sha: string;
@@ -37,7 +37,7 @@ export async function explainCommit(
     project: ProjectContext,
     providerConfig: AIProviderConfig
 ) {
-    const model = createAIProvider(providerConfig);
+    const model = await createAIProviderAsync(providerConfig);
 
     const systemPrompt = `You are an expert code reviewer helping developers understand a codebase by walking through its git history commit by commit.
 
@@ -68,7 +68,7 @@ ${commit.diff ? `**Diff:**\n\`\`\`diff\n${commit.diff.substring(0, 2000)}${commi
         model,
         system: systemPrompt,
         prompt: userPrompt,
-        maxOutputTokens: 1000, // Limit response length for faster generation
+        maxOutputTokens: 1000,
     });
 }
 
@@ -80,7 +80,7 @@ export async function explainFile(
     project: ProjectContext,
     providerConfig: AIProviderConfig
 ) {
-    const model = createAIProvider(providerConfig);
+    const model = await createAIProviderAsync(providerConfig);
 
     const systemPrompt = `You are an expert code reviewer helping developers understand a codebase.
 
@@ -106,7 +106,7 @@ ${file.content.substring(0, 8000)}${file.content.length > 8000 ? '\n// ... (trun
         model,
         system: systemPrompt,
         prompt: userPrompt,
-        maxOutputTokens: 1200, // Limit response length for faster generation
+        maxOutputTokens: 1200,
     });
 }
 
@@ -117,7 +117,7 @@ export async function explainProject(
     project: ProjectContext,
     providerConfig: AIProviderConfig
 ) {
-    const model = createAIProvider(providerConfig);
+    const model = await createAIProviderAsync(providerConfig);
 
     const systemPrompt = `You are an expert at explaining software projects to newcomers.
 Help developers understand what this project does and how to start contributing.`;
@@ -140,7 +140,7 @@ Please explain:
         model,
         system: systemPrompt,
         prompt: userPrompt,
-        maxOutputTokens: 1500, // Limit response length for faster generation
+        maxOutputTokens: 1500,
     });
 }
 
@@ -156,7 +156,7 @@ export async function answerQuestion(
     },
     providerConfig: AIProviderConfig
 ) {
-    const model = createAIProvider(providerConfig);
+    const model = await createAIProviderAsync(providerConfig);
 
     let contextText = `Project: ${context.project.name}\n`;
 
@@ -177,6 +177,6 @@ ${contextText}`;
         model,
         system: systemPrompt,
         prompt: question,
-        maxOutputTokens: 800, // Limit response length for faster generation
+        maxOutputTokens: 800,
     });
 }

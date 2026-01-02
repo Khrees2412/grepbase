@@ -158,9 +158,9 @@ export async function POST(request: NextRequest) {
         } else if (type === 'day-summary' && dayCommits && dayCommits.length > 0) {
             // Generate summary for all commits on a specific day
             const { streamText } = await import('ai');
-            const { createAIProvider } = await import('@/services/ai-providers');
+            const { createAIProviderAsync } = await import('@/services/ai-providers');
 
-            const aiModel = createAIProvider(providerConfig);
+            const aiModel = await createAIProviderAsync(providerConfig);
 
             const commitsList = dayCommits.map((c: { sha: string; message: string; authorName: string | null; date: string }) =>
                 `• ${c.sha?.substring(0, 7) || 'unknown'}: ${c.message?.split('\n')[0] || 'No message'} (by ${c.authorName || 'Unknown'})`

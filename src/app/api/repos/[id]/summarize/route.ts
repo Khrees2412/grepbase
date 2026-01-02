@@ -7,7 +7,7 @@ import { NextRequest } from 'next/server';
 import { getDb } from '@/lib/db';
 import { repositories } from '@/db';
 import { eq } from 'drizzle-orm';
-import { createAIProvider, type AIProviderType } from '@/services/ai-providers';
+import { createAIProviderAsync, type AIProviderType } from '@/services/ai-providers';
 import { streamText } from 'ai';
 
 export const runtime = 'edge';
@@ -19,13 +19,13 @@ export async function POST(
     try {
         const db = getDb();
         const { id } = await params;
-        const body = await request.json();
-        const { provider, apiKey, model, baseUrl } = body as {
+        const body = await request.json() as {
             provider: AIProviderType;
             apiKey?: string;
             model?: string;
             baseUrl?: string;
         };
+        const { provider, apiKey, model, baseUrl } = body;
 
         // Fetch repository from database
         const repo = await db
@@ -46,7 +46,7 @@ export async function POST(
             return Response.json({ error: 'API key is required' }, { status: 400 });
         }
 
-        const aiModel = createAIProvider({
+        const aiModel = await createAIProviderAsync({
             type: provider,
             apiKey: apiKey,
             model: model,

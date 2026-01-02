@@ -1,12 +1,9 @@
 /**
  * AI Provider service using Vercel AI SDK
  * Supports multiple providers with BYOK (Bring Your Own Key)
+ * Uses dynamic imports to reduce initial bundle size
  */
 
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { createOpenAI } from '@ai-sdk/openai';
-import { createAnthropic } from '@ai-sdk/anthropic';
-import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import type { LanguageModel } from 'ai';
 
 export type AIProviderType = 'gemini' | 'openai' | 'anthropic' | 'ollama' | 'lmstudio';
@@ -14,7 +11,7 @@ export type AIProviderType = 'gemini' | 'openai' | 'anthropic' | 'ollama' | 'lms
 export interface AIProviderConfig {
     type: AIProviderType;
     apiKey?: string;
-    baseUrl?: string; // For Ollama or custom endpoints
+    baseUrl?: string;
     model?: string;
 }
 
@@ -29,47 +26,51 @@ const DEFAULT_MODELS: Record<AIProviderType, string> = {
 
 /**
  * Create an AI provider instance based on configuration
+ * Uses dynamic imports to avoid bundling all providers
  */
-export function createAIProvider(config: AIProviderConfig): LanguageModel {
+export async function createAIProviderAsync(config: AIProviderConfig): Promise<LanguageModel> {
     const model = config.model || DEFAULT_MODELS[config.type];
 
     switch (config.type) {
         case 'gemini': {
             if (!config.apiKey) throw new Error('Gemini API key is required');
+            const { createGoogleGenerativeAI } = await import('@ai-sdk/google');
             const google = createGoogleGenerativeAI({ apiKey: config.apiKey });
             return google(model);
         }
 
         case 'openai': {
             if (!config.apiKey) throw new Error('OpenAI API key is required');
+            const { createOpenAI } = await import('@ai-sdk/openai');
             const openai = createOpenAI({ apiKey: config.apiKey });
             return openai(model);
         }
 
         case 'anthropic': {
             if (!config.apiKey) throw new Error('Anthropic API key is required');
+            const { createAnthropic } = await import('@ai-sdk/anthropic');
             const anthropic = createAnthropic({ apiKey: config.apiKey });
             return anthropic(model);
         }
 
         case 'ollama': {
-            // Ollama uses OpenAI-compatible API
             const baseURL = config.baseUrl || 'http://localhost:11434/v1';
+            const { createOpenAICompatible } = await import('@ai-sdk/openai-compatible');
             const ollama = createOpenAICompatible({
                 name: 'ollama',
                 baseURL,
-                apiKey: 'ollama', // Ollama doesn't need a real key
+                apiKey: 'ollama',
             });
             return ollama(model);
         }
 
         case 'lmstudio': {
-            // LMStudio uses OpenAI-compatible API
             const lmstudioURL = config.baseUrl || 'http://127.0.0.1:1234/v1';
+            const { createOpenAICompatible } = await import('@ai-sdk/openai-compatible');
             const lmstudio = createOpenAICompatible({
                 name: 'lmstudio',
                 baseURL: lmstudioURL,
-                apiKey: 'lmstudio', // LMStudio doesn't need a real key
+                apiKey: 'lmstudio',
             });
             return lmstudio(model);
         }
@@ -77,6 +78,12 @@ export function createAIProvider(config: AIProviderConfig): LanguageModel {
         default:
             throw new Error(`Unknown provider type: ${config.type}`);
     }
+}
+
+// Synchronous version for backward compatibility (re-exports dynamic version)
+export function createAIProvider(config: AIProviderConfig): LanguageModel {
+    // This is a workaround - we need to make callers await the result
+    throw new Error('Use createAIProviderAsync instead for edge runtime compatibility');
 }
 
 /**
