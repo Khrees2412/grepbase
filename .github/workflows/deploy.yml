@@ -30,8 +30,8 @@ jobs:
       - name: Type check
         run: bun x tsc --noEmit
 
-      - name: Build
-        run: bun run build
+      - name: Build for Cloudflare Pages
+        run: bun run pages:build
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3

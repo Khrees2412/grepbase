@@ -10,7 +10,6 @@ import {
 } from 'lucide-react';
 import styles from './page.module.css';
 import SettingsModal from '@/components/SettingsModal';
-import { getAISettings } from '@/components/SettingsModal';
 import CodeViewer from '@/components/CodeViewer';
 import AIPanel from '@/components/AIPanel';
 import CommitTimeline from '@/components/CommitTimeline';
@@ -115,7 +114,8 @@ export default function ExplorePage({ params }: { params: Promise<{ id: string }
         }
 
         fetchFiles();
-    }, [currentCommit?.sha, repository, id]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentCommit?.sha, repository?.id, id]);
 
     // Select file and load content lazily
     async function selectFile(file: FileData) {

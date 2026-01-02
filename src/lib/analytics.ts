@@ -6,7 +6,9 @@ import { logger } from './logger';
 
 const analyticsLogger = logger.child({ service: 'analytics' });
 
-interface AnalyticsEvent {
+// Keeping for documentation/type reference
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface _AnalyticsEvent {
     blobs?: string[];
     doubles?: number[];
     indexes?: string[];
@@ -17,7 +19,7 @@ export class Analytics {
         try {
             const { env } = getRequestContext<{ ANALYTICS: AnalyticsEngineDataset }>();
             return env.ANALYTICS;
-        } catch (e) {
+        } catch {
             // Not in request context or analytics not bound
             return null;
         }

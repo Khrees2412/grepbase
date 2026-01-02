@@ -16,7 +16,7 @@ export class RateLimiter {
         try {
             const { env } = getRequestContext<{ grepbase_cache: KVNamespace }>();
             return env.grepbase_cache;
-        } catch (e) {
+        } catch {
             logger.warn('KV not available for rate limiting');
             return null;
         }

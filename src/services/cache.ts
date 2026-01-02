@@ -14,7 +14,7 @@ export class CacheService {
         try {
             const { env } = getRequestContext<{ grepbase_cache: KVNamespace }>();
             return env.grepbase_cache;
-        } catch (e) {
+        } catch {
             // Silently fail if not in a request context (e.g. build time)
             return null;
         }

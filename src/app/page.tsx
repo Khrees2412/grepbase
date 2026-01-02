@@ -19,7 +19,7 @@ interface Repository {
 
 export default function Home() {
   const [url, setUrl] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [loading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [isValid, setIsValid] = useState(false);

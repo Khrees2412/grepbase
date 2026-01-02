@@ -24,7 +24,7 @@ export function sanitizeGitHubUrl(url: string): string {
         parsed.hash = '';
 
         return parsed.toString();
-    } catch (error) {
+    } catch {
         throw new Error('Invalid GitHub URL');
     }
 }

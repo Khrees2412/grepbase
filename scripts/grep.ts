@@ -4,10 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import axios from 'axios';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-
-const execAsync = promisify(exec);
+// exec/promisify removed - not currently used
 
 
 interface FileInfo {

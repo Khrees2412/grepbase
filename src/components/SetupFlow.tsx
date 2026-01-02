@@ -229,6 +229,7 @@ export default function SetupFlow({ repoUrl, onCancel }: SetupFlowProps) {
         if (step === 'loading' && repoData && !generatingSummary && !summary) {
             generateSummary();
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [step, repoData, generatingSummary, summary]);
 
     function viewTimeline() {

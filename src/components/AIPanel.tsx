@@ -28,7 +28,7 @@ interface Message {
     content: string;
 }
 
-export default function AIPanel({ repository, commit, totalCommits, currentIndex }: AIPanelProps) {
+export default function AIPanel({ repository, commit }: AIPanelProps) {
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
