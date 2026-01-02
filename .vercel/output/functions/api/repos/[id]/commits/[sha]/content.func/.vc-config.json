@@ -1,0 +1,18 @@
+{
+  "runtime": "edge",
+  "name": "api/repos/[id]/commits/[sha]/content",
+  "deploymentTarget": "v8-worker",
+  "entrypoint": "index.js",
+  "assets": [],
+  "framework": {
+    "slug": "nextjs",
+    "version": "16.1.1"
+  },
+  "environment": {
+    "__NEXT_BUILD_ID": "45wwz01MkHA8G0LiTpfIq",
+    "NEXT_SERVER_ACTIONS_ENCRYPTION_KEY": "HIkFfxuDQ9rfgXGUELv4X49Y5t2fwI9K7IXQ1Y4+o5A=",
+    "__NEXT_PREVIEW_MODE_ID": "915c9a22ec793d98934d8e7af712468b",
+    "__NEXT_PREVIEW_MODE_ENCRYPTION_KEY": "41101b4d1c80ae00afcfca0387718ab2c78740e9b4b1369c4a22811f657f5389",
+    "__NEXT_PREVIEW_MODE_SIGNING_KEY": "adaf971130ec216c9e5040761850963824efdf050012dc94c7690331bf54b73f"
+  }
+}
