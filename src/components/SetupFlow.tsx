@@ -58,7 +58,7 @@ export default function SetupFlow({ repoUrl, onCancel }: SetupFlowProps) {
     // Load settings from secure storage and start fetching repo
     useEffect(() => {
         // Try session storage first
-        const sessionData = secureStorage.getSessionItem<Record<string, ProviderSettings & { activeProvider?: AIProviderType }>>(STORAGE_KEY);
+        const sessionData = secureStorage.getSessionItem<Partial<Record<AIProviderType, ProviderSettings>> & { activeProvider?: AIProviderType }>(STORAGE_KEY);
         if (sessionData) {
             setSettings(prev => ({ ...prev, ...sessionData }));
             if (sessionData.activeProvider) {
@@ -68,7 +68,7 @@ export default function SetupFlow({ repoUrl, onCancel }: SetupFlowProps) {
         }
 
         // Fall back to secure localStorage
-        const saved = secureStorage.getSecureItem<Record<string, ProviderSettings & { activeProvider?: AIProviderType }>>(STORAGE_KEY);
+        const saved = secureStorage.getSecureItem<Partial<Record<AIProviderType, ProviderSettings>> & { activeProvider?: AIProviderType }>(STORAGE_KEY);
         if (saved) {
             setSettings(prev => ({ ...prev, ...saved }));
             if (saved.activeProvider) {

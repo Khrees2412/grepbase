@@ -35,7 +35,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     // Load settings from secure storage on mount
     useEffect(() => {
         // Try session storage first (more secure for API keys)
-        const sessionData = secureStorage.getSessionItem<Record<string, ProviderSettings & { activeProvider?: AIProviderType }>>(STORAGE_KEY);
+        const sessionData = secureStorage.getSessionItem<Partial<Record<AIProviderType, ProviderSettings>> & { activeProvider?: AIProviderType }>(STORAGE_KEY);
         if (sessionData) {
             setSettings(prev => ({ ...prev, ...sessionData }));
             if (sessionData.activeProvider) {
@@ -45,7 +45,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         }
 
         // Fall back to secure localStorage
-        const saved = secureStorage.getSecureItem<Record<string, ProviderSettings & { activeProvider?: AIProviderType }>>(STORAGE_KEY);
+        const saved = secureStorage.getSecureItem<Partial<Record<AIProviderType, ProviderSettings>> & { activeProvider?: AIProviderType }>(STORAGE_KEY);
         if (saved) {
             setSettings(prev => ({ ...prev, ...saved }));
             if (saved.activeProvider) {

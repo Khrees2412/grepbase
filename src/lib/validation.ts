@@ -33,6 +33,10 @@ export const aiProviderConfigSchema = z.object({
     { message: 'API key is required for cloud providers' }
 );
 
+// AI Provider type enum for reuse
+export const aiProviderTypeSchema = z.enum(['gemini', 'openai', 'anthropic', 'ollama', 'lmstudio']);
+export type AIProviderTypeFromSchema = z.infer<typeof aiProviderTypeSchema>;
+
 // Explain API request
 export const explainRequestSchema = z.object({
     type: z.enum(['commit', 'project', 'question', 'day-summary']),
@@ -40,6 +44,8 @@ export const explainRequestSchema = z.object({
     commitSha: z.string().optional(),
     question: z.string().optional(),
     provider: aiProviderConfigSchema.optional(),
+    // Flat params for backward compatibility
+    providerType: aiProviderTypeSchema.optional(),
     commits: z.array(z.object({
         sha: z.string(),
         message: z.string(),
@@ -59,6 +65,12 @@ export const explainRequestSchema = z.object({
         return true;
     },
     { message: 'Invalid request: missing required fields for type' }
+).refine(
+    (data) => {
+        // Either nested provider OR flat providerType must be provided
+        return !!(data.provider?.type || data.providerType);
+    },
+    { message: 'Either provider.type or providerType is required' }
 );
 
 // Repository ingest request

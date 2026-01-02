@@ -4,4 +4,5 @@
 interface CloudflareEnv {
     grepbase_db: D1Database;
     grepbase_cache: KVNamespace;
+    ANALYTICS: AnalyticsEngineDataset;
 }

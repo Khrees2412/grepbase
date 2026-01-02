@@ -4,7 +4,7 @@ compatibility_flags = ["nodejs_compat"]
 pages_build_output_dir = ".vercel/output/static"
 
 # Analytics Engine binding for monitoring
-[analytics_engine_datasets]
+[[analytics_engine_datasets]]
 binding = "ANALYTICS"
 
 # Observability
@@ -27,5 +27,5 @@ id = "6fbff750f7314c7ca6435e68966769bb"
 [env.production]
 vars = { ENVIRONMENT = "production" }
 
-[env.staging]
-vars = { ENVIRONMENT = "staging" }
+[env.preview]
+vars = { ENVIRONMENT = "preview" }

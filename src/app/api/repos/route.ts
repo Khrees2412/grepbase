@@ -77,11 +77,11 @@ export async function POST(request: NextRequest) {
         // Validate and sanitize input
         const parseResult = ingestRepoSchema.safeParse(rawBody);
         if (!parseResult.success) {
-            requestLogger.warn({ errors: parseResult.error.errors }, 'Validation failed');
+            requestLogger.warn({ errors: parseResult.error.issues }, 'Validation failed');
             return NextResponse.json(
                 {
                     error: 'Validation failed',
-                    details: parseResult.error.errors,
+                    details: parseResult.error.issues,
                 },
                 { status: 400 }
             );

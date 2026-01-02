@@ -3,6 +3,12 @@ import { logger } from '@/lib/logger';
 
 const cacheLogger = logger.child({ service: 'cache' });
 
+export const CACHE_TTL = {
+    HOUR: 3600,
+    DAY: 86400,
+    WEEK: 604800,
+};
+
 export class CacheService {
     private getKv(): KVNamespace | null {
         try {
@@ -27,7 +33,7 @@ export class CacheService {
             } else {
                 cacheLogger.debug({ key }, 'Cache miss');
             }
-            return value;
+            return value as T;
         } catch (e) {
             cacheLogger.error({ key, error: e }, 'Cache get failed');
             return null;

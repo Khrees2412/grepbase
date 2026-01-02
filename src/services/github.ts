@@ -179,7 +179,7 @@ export async function fetchFilesAtCommit(
     if (cached) return cached;
 
     const response = await fetch(
-        `${GITHUB_API_BASE}/repos/${owner}/${repo}/git/trees/${sha}?recursive=1`,
+        `${GITHUB.API_BASE}/repos/${owner}/${repo}/git/trees/${sha}?recursive=1`,
         {
             headers: {
                 'Accept': 'application/vnd.github.v3+json',
@@ -224,7 +224,7 @@ export async function fetchFileContent(
 
     try {
         const response = await fetch(
-            `${GITHUB_API_BASE}/repos/${owner}/${repo}/contents/${path}?ref=${sha}`,
+            `${GITHUB.API_BASE}/repos/${owner}/${repo}/contents/${path}?ref=${sha}`,
             {
                 headers: {
                     'Accept': 'application/vnd.github.v3.raw',
@@ -256,7 +256,7 @@ export async function fetchCommitDiff(
 
     try {
         const response = await fetch(
-            `${GITHUB_API_BASE}/repos/${owner}/${repo}/commits/${sha}`,
+            `${GITHUB.API_BASE}/repos/${owner}/${repo}/commits/${sha}`,
             {
                 headers: {
                     'Accept': 'application/vnd.github.v3.diff',

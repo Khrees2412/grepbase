@@ -3,9 +3,19 @@
  * Uses AI to explain commits, files, and projects
  */
 
-import { streamText } from 'ai';
+import { streamText, type StreamTextResult } from 'ai';
 import { createAIProviderAsync, type AIProviderConfig } from './ai-providers';
 import { cache, CACHE_TTL } from './cache';
+
+/**
+ * Interface for cached explanation responses that mimics StreamTextResult
+ */
+interface CachedStreamResult {
+    toTextStreamResponse: () => Response;
+    text: Promise<string>;
+}
+
+type ExplainResult = StreamTextResult<Record<string, never>, never> | CachedStreamResult;
 
 // Helper to generate a hash for cache keys
 async function sha256(str: string): Promise<string> {
@@ -46,7 +56,7 @@ export async function explainCommit(
     commit: CommitContext,
     project: ProjectContext,
     providerConfig: AIProviderConfig
-) {
+): Promise<ExplainResult> {
     const model = await createAIProviderAsync(providerConfig);
 
     const systemPrompt = `You are an expert code reviewer helping developers understand a codebase by walking through its git history commit by commit.
@@ -79,11 +89,11 @@ ${commit.diff ? `**Diff:**\n\`\`\`diff\n${commit.diff.substring(0, 2000)}${commi
     // Check cache
     const cached = await cache.get<string>(cacheKey);
     if (cached) {
-        return {
+        const cachedResult: CachedStreamResult = {
             toTextStreamResponse: () => new Response(cached),
             text: Promise.resolve(cached),
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        } as any;
+        };
+        return cachedResult;
     }
 
     return streamText({
@@ -104,7 +114,7 @@ export async function explainFile(
     file: FileContext,
     project: ProjectContext,
     providerConfig: AIProviderConfig
-) {
+): Promise<ExplainResult> {
     const model = await createAIProviderAsync(providerConfig);
 
     const systemPrompt = `You are an expert code reviewer helping developers understand a codebase.
@@ -134,11 +144,11 @@ ${file.content.substring(0, 8000)}${file.content.length > 8000 ? '\n// ... (trun
     // Check cache
     const cached = await cache.get<string>(cacheKey);
     if (cached) {
-        return {
+        const cachedResult: CachedStreamResult = {
             toTextStreamResponse: () => new Response(cached),
             text: Promise.resolve(cached),
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        } as any;
+        };
+        return cachedResult;
     }
 
     return streamText({
@@ -158,7 +168,7 @@ ${file.content.substring(0, 8000)}${file.content.length > 8000 ? '\n// ... (trun
 export async function explainProject(
     project: ProjectContext,
     providerConfig: AIProviderConfig
-) {
+): Promise<ExplainResult> {
     const model = await createAIProviderAsync(providerConfig);
 
     const systemPrompt = `You are an expert at explaining software projects to newcomers.
@@ -183,11 +193,11 @@ Please explain:
     // Check cache
     const cached = await cache.get<string>(cacheKey);
     if (cached) {
-        return {
+        const cachedResult: CachedStreamResult = {
             toTextStreamResponse: () => new Response(cached),
             text: Promise.resolve(cached),
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        } as any;
+        };
+        return cachedResult;
     }
 
     return streamText({
@@ -212,7 +222,7 @@ export async function answerQuestion(
         project: ProjectContext;
     },
     providerConfig: AIProviderConfig
-) {
+): Promise<ExplainResult> {
     const model = await createAIProviderAsync(providerConfig);
 
     let contextText = `Project: ${context.project.name}\n`;
@@ -236,11 +246,11 @@ ${contextText}`;
     // Check cache
     const cached = await cache.get<string>(cacheKey);
     if (cached) {
-        return {
+        const cachedResult: CachedStreamResult = {
             toTextStreamResponse: () => new Response(cached),
             text: Promise.resolve(cached),
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        } as any;
+        };
+        return cachedResult;
     }
 
     return streamText({

@@ -67,11 +67,11 @@ export async function POST(request: NextRequest) {
         // Validate request with Zod
         const parseResult = explainRequestSchema.safeParse(rawBody);
         if (!parseResult.success) {
-            requestLogger.warn({ errors: parseResult.error.errors }, 'Validation failed');
+            requestLogger.warn({ errors: parseResult.error.issues }, 'Validation failed');
             return new Response(
                 JSON.stringify({
                     error: 'Validation failed',
-                    details: parseResult.error.errors,
+                    details: parseResult.error.issues,
                 }),
                 { status: 400, headers: { 'Content-Type': 'application/json' } }
             );
@@ -84,6 +84,7 @@ export async function POST(request: NextRequest) {
             commitSha,
             question,
             provider,
+            providerType,
             commits: dayCommits,
             projectName,
             projectOwner,
@@ -93,8 +94,9 @@ export async function POST(request: NextRequest) {
         } = body;
 
         // Handle provider config - can come from nested object or flat params
+        // The schema validates that either provider.type or providerType exists
         const providerConfig: AIProviderConfig = {
-            type: provider?.type || body.provider!,
+            type: provider?.type ?? providerType!,
             apiKey: provider?.apiKey || apiKey,
             baseUrl: provider?.baseUrl || baseUrl,
             model: provider?.model || model,
