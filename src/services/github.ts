@@ -4,6 +4,7 @@
  */
 
 const GITHUB_API_BASE = 'https://api.github.com';
+import { cache, CACHE_TTL } from './cache';
 
 export interface GitHubRepo {
     owner: string;
@@ -56,6 +57,10 @@ export function parseGitHubUrl(url: string): { owner: string; repo: string } | n
  * Fetch repository metadata
  */
 export async function fetchRepository(owner: string, repo: string): Promise<GitHubRepo> {
+    const cacheKey = `repo:${owner}:${repo}`;
+    const cached = await cache.get<GitHubRepo>(cacheKey);
+    if (cached) return cached;
+
     const response = await fetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}`, {
         headers: {
             'Accept': 'application/vnd.github.v3+json',
@@ -76,7 +81,7 @@ export async function fetchRepository(owner: string, repo: string): Promise<GitH
         html_url: string;
     };
 
-    return {
+    const result = {
         owner: data.owner.login,
         name: data.name,
         description: data.description,
@@ -84,6 +89,9 @@ export async function fetchRepository(owner: string, repo: string): Promise<GitH
         defaultBranch: data.default_branch,
         url: data.html_url,
     };
+
+    await cache.set(cacheKey, result, CACHE_TTL.HOUR);
+    return result;
 }
 
 /**
@@ -113,6 +121,10 @@ export async function fetchCommitHistory(
     repo: string,
     maxCommits: number = 100
 ): Promise<GitHubCommit[]> {
+    const cacheKey = `commits:${owner}:${repo}:${maxCommits}`;
+    const cached = await cache.get<GitHubCommit[]>(cacheKey);
+    if (cached) return cached;
+
     const allCommits: GitHubCommit[] = [];
     let page = 1;
     const perPage = Math.min(100, maxCommits);
@@ -157,7 +169,9 @@ export async function fetchCommitHistory(
     }
 
     // Reverse to get oldest first (chronological order)
-    return allCommits.reverse().slice(0, maxCommits);
+    const result = allCommits.reverse().slice(0, maxCommits);
+    await cache.set(cacheKey, result, CACHE_TTL.MINUTE * 5);
+    return result;
 }
 
 /**
@@ -168,6 +182,10 @@ export async function fetchFilesAtCommit(
     repo: string,
     sha: string
 ): Promise<GitHubFile[]> {
+    const cacheKey = `files:${owner}:${repo}:${sha}`;
+    const cached = await cache.get<GitHubFile[]>(cacheKey);
+    if (cached) return cached;
+
     const response = await fetch(
         `${GITHUB_API_BASE}/repos/${owner}/${repo}/git/trees/${sha}?recursive=1`,
         {
@@ -186,7 +204,7 @@ export async function fetchFilesAtCommit(
         tree: Array<{ path: string; type: string; size?: number; sha: string }>;
     };
 
-    return data.tree
+    const result = data.tree
         .filter((item) => item.type === 'blob')
         .map((item) => ({
             path: item.path,
@@ -194,6 +212,9 @@ export async function fetchFilesAtCommit(
             size: item.size || 0,
             sha: item.sha,
         }));
+
+    await cache.set(cacheKey, result, CACHE_TTL.WEEK); // Immutable by SHA
+    return result;
 }
 
 /**
@@ -205,6 +226,10 @@ export async function fetchFileContent(
     sha: string,
     path: string
 ): Promise<string | null> {
+    const cacheKey = `content:${owner}:${repo}:${sha}:${path}`;
+    const cached = await cache.get<string>(cacheKey);
+    if (cached) return cached;
+
     try {
         const response = await fetch(
             `${GITHUB_API_BASE}/repos/${owner}/${repo}/contents/${path}?ref=${sha}`,
@@ -217,7 +242,9 @@ export async function fetchFileContent(
         );
 
         if (!response.ok) return null;
-        return await response.text();
+        const text = await response.text();
+        await cache.set(cacheKey, text, CACHE_TTL.WEEK);
+        return text;
     } catch {
         return null;
     }
@@ -231,6 +258,10 @@ export async function fetchCommitDiff(
     repo: string,
     sha: string
 ): Promise<string | null> {
+    const cacheKey = `diff:${owner}:${repo}:${sha}`;
+    const cached = await cache.get<string>(cacheKey);
+    if (cached) return cached;
+
     try {
         const response = await fetch(
             `${GITHUB_API_BASE}/repos/${owner}/${repo}/commits/${sha}`,
@@ -243,7 +274,9 @@ export async function fetchCommitDiff(
         );
 
         if (!response.ok) return null;
-        return await response.text();
+        const text = await response.text();
+        await cache.set(cacheKey, text, CACHE_TTL.WEEK);
+        return text;
     } catch {
         return null;
     }

@@ -100,18 +100,17 @@ export default function Home() {
   }
 
   useEffect(() => {
+    async function fetchRepositories() {
+      try {
+        const res = await fetch('/api/repos');
+        const data = await res.json() as { repositories?: Repository[] };
+        setRepositories(data.repositories || []);
+      } catch (err) {
+        console.error('Failed to fetch repositories:', err);
+      }
+    }
     fetchRepositories();
   }, []);
-
-  async function fetchRepositories() {
-    try {
-      const res = await fetch('/api/repos');
-      const data = await res.json() as { repositories?: Repository[] };
-      setRepositories(data.repositories || []);
-    } catch (err) {
-      console.error('Failed to fetch repositories:', err);
-    }
-  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

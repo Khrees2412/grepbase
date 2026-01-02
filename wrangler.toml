@@ -3,9 +3,15 @@ compatibility_date = "2024-12-01"
 compatibility_flags = ["nodejs_compat"]
 pages_build_output_dir = ".vercel/output/static"
 
+
 # D1 Database binding
 [[d1_databases]]
 binding = "grepbase_db"
 database_name = "grepbase-db"
 database_id = "326233af-b937-4c0b-ab47-7349f251b961"
 migrations_dir = "drizzle"
+
+# KV Namespace binding
+[[kv_namespaces]]
+binding = "grepbase_cache"
+id = "6fbff750f7314c7ca6435e68966769bb"

@@ -5,6 +5,16 @@
 
 import { streamText } from 'ai';
 import { createAIProviderAsync, type AIProviderConfig } from './ai-providers';
+import { cache, CACHE_TTL } from './cache';
+
+// Helper to generate a hash for cache keys
+async function sha256(str: string): Promise<string> {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(str);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
 
 export interface CommitContext {
     sha: string;
@@ -64,11 +74,26 @@ Be concise but thorough. Use markdown formatting.`;
 
 ${commit.diff ? `**Diff:**\n\`\`\`diff\n${commit.diff.substring(0, 2000)}${commit.diff.length > 2000 ? '\n... (truncated)' : ''}\n\`\`\`` : ''}`;
 
+    const cacheKey = `explain:commit:${commit.sha}:${await sha256(systemPrompt + userPrompt + (providerConfig.model || 'default'))}`;
+
+    // Check cache
+    const cached = await cache.get<string>(cacheKey);
+    if (cached) {
+        return {
+            toTextStreamResponse: () => new Response(cached),
+            text: Promise.resolve(cached),
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } as any;
+    }
+
     return streamText({
         model,
         system: systemPrompt,
         prompt: userPrompt,
         maxOutputTokens: 1000,
+        onFinish: ({ text }) => {
+            cache.set(cacheKey, text, CACHE_TTL.WEEK);
+        },
     });
 }
 
@@ -102,11 +127,28 @@ Explain this code file clearly and concisely. Focus on:
 ${file.content.substring(0, 8000)}${file.content.length > 8000 ? '\n// ... (truncated)' : ''}
 \`\`\``;
 
+    // Generate a hash of content for the cache key since we don't have SHA in FileContext
+    const contentHash = await sha256(file.content);
+    const cacheKey = `explain:file:${file.path}:${contentHash}:${await sha256(systemPrompt + userPrompt + (providerConfig.model || 'default'))}`;
+
+    // Check cache
+    const cached = await cache.get<string>(cacheKey);
+    if (cached) {
+        return {
+            toTextStreamResponse: () => new Response(cached),
+            text: Promise.resolve(cached),
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } as any;
+    }
+
     return streamText({
         model,
         system: systemPrompt,
         prompt: userPrompt,
         maxOutputTokens: 1200,
+        onFinish: ({ text }) => {
+            cache.set(cacheKey, text, CACHE_TTL.WEEK);
+        },
     });
 }
 
@@ -136,11 +178,26 @@ Please explain:
 3. Good starting points for understanding the codebase
 4. Tips for making your first contribution`;
 
+    const cacheKey = `explain:project:${project.name}:${await sha256(project.readme || '')}:${await sha256(systemPrompt + userPrompt + (providerConfig.model || 'default'))}`;
+
+    // Check cache
+    const cached = await cache.get<string>(cacheKey);
+    if (cached) {
+        return {
+            toTextStreamResponse: () => new Response(cached),
+            text: Promise.resolve(cached),
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } as any;
+    }
+
     return streamText({
         model,
         system: systemPrompt,
         prompt: userPrompt,
         maxOutputTokens: 1500,
+        onFinish: ({ text }) => {
+            cache.set(cacheKey, text, CACHE_TTL.DAY); // Project explanation might change more often?
+        },
     });
 }
 
@@ -173,10 +230,26 @@ Answer questions clearly and concisely using the provided context.
 
 ${contextText}`;
 
+    // For questions, we cache based on the exact question and context
+    const cacheKey = `explain:question:${await sha256(question + contextText + (providerConfig.model || 'default'))}`;
+
+    // Check cache
+    const cached = await cache.get<string>(cacheKey);
+    if (cached) {
+        return {
+            toTextStreamResponse: () => new Response(cached),
+            text: Promise.resolve(cached),
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } as any;
+    }
+
     return streamText({
         model,
         system: systemPrompt,
         prompt: question,
         maxOutputTokens: 800,
+        onFinish: ({ text }) => {
+            cache.set(cacheKey, text, CACHE_TTL.WEEK);
+        },
     });
 }

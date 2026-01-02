@@ -34,8 +34,15 @@ interface FileSummary {
     timestamp: string;
 }
 
+interface PreprocessedFile {
+    path: string;
+    ext: string;
+    size: number;
+    hash?: string;
+}
+
 interface PreprocessedBatch {
-    batch: any[];
+    batch: PreprocessedFile[];
     analysis: string;
     timestamp: string;
 }
@@ -127,7 +134,7 @@ class GrepBase {
 
     shouldIgnoreDirectory(dirname: string): boolean {
         const ignorePatterns = [
-            'node_modules', '.git', '.vscode', '.idea', 'build', 'dist', 
+            'node_modules', '.git', '.vscode', '.idea', 'build', 'dist',
             'target', 'vendor', '__pycache__', '.pytest_cache', 'coverage'
         ];
         return ignorePatterns.includes(dirname) || dirname.startsWith('.');
@@ -135,8 +142,8 @@ class GrepBase {
 
     shouldIncludeFile(filePath: string, fileSize: number): boolean {
         const ext = path.extname(filePath);
-        return this.options.supportedExtensions.includes(ext) && 
-               fileSize <= this.options.maxFileSize;
+        return this.options.supportedExtensions.includes(ext) &&
+            fileSize <= this.options.maxFileSize;
     }
 
     // Phase 1: Basic Analysis (enhanced)
@@ -201,14 +208,14 @@ class GrepBase {
                 analysis: analysis,
                 timestamp: new Date().toISOString()
             };
-        } catch (error: any) {
-            console.error(`❌ Local LLM error:`, error.message);
+        } catch (error: unknown) {
+            console.error(`❌ Local LLM error:`, (error as Error).message);
             return {
-                batch: batch.map(f => ({ 
-                    path: f.relativePath, 
-                    ext: f.ext, 
+                batch: batch.map(f => ({
+                    path: f.relativePath,
+                    ext: f.ext,
                     size: f.size,
-                    hash: f.hash 
+                    hash: f.hash
                 })),
                 analysis: "Error: Could not analyze with local LLM",
                 timestamp: new Date().toISOString()
@@ -251,10 +258,10 @@ Format as structured text for easy parsing.`;
 
         for (const file of files) {
             console.log(`🔍 Summarizing: ${file.relativePath}`);
-            
+
             // Check cache using file hash
             const cacheFile = path.join(this.options.summaryDir, `summary_${file.hash}.json`);
-            
+
             if (fs.existsSync(cacheFile)) {
                 console.log(`✅ Summary cache hit: ${file.relativePath}`);
                 const cached = JSON.parse(fs.readFileSync(cacheFile, 'utf8'));
@@ -265,7 +272,7 @@ Format as structured text for easy parsing.`;
 
             // Generate new summary
             const summary = await this.generateFileSummary(file);
-            
+
             // Cache the result
             fs.writeFileSync(cacheFile, JSON.stringify(summary, null, 2));
             summaries.push(summary);
@@ -311,15 +318,15 @@ Be specific and actionable. Avoid generic descriptions.`
             });
 
             const analysis = response.data.choices[0].message.content;
-            
+
             // Parse the LLM response to extract structured data
             return this.parseFileSummaryResponse(file, analysis);
 
-        } catch (error: any) {
-            console.error(`❌ Summary error for ${file.relativePath}:`, error.message);
+        } catch (error: unknown) {
+            console.error(`❌ Summary error for ${file.relativePath}:`, (error as Error).message);
             return {
                 file: file.relativePath,
-                summary: `Error generating summary: ${error.message}`,
+                summary: `Error generating summary: ${(error as Error).message}`,
                 relationships: [],
                 purpose: "Unknown due to analysis error",
                 complexity: 'medium',
@@ -331,7 +338,7 @@ Be specific and actionable. Avoid generic descriptions.`
     buildSummaryPrompt(file: FileInfo, content: string): string {
         // Extract basic structure first
         const structure = this.extractBasicStructure(file.ext, content);
-        
+
         return `Analyze this ${this.getLanguageFromExtension(file.ext)} file:
 
 File: ${file.relativePath}
@@ -366,9 +373,9 @@ Be specific to THIS file, not generic.`;
 
         for (const line of lines) {
             const trimmed = line.trim();
-            
+
             // Extract imports (basic patterns for multiple languages)
-            if (trimmed.startsWith('import ') || trimmed.startsWith('from ') || 
+            if (trimmed.startsWith('import ') || trimmed.startsWith('from ') ||
                 trimmed.startsWith('#include') || trimmed.startsWith('use ')) {
                 structure.imports.push(trimmed);
             }
@@ -490,7 +497,7 @@ Be specific to THIS file, not generic.`;
             console.log(`  - Summaries generated: ${this.stats.summariesGenerated}`);
             console.log(`  - Summaries from cache: ${this.stats.summariesFromCache}`);
         }
-        
+
         return outputFile;
     }
 
@@ -513,8 +520,8 @@ Be specific to THIS file, not generic.`;
 
             console.log(`✅ GrepBase analysis complete!`);
             return outputFile;
-            
-        } catch (error: any) {
+
+        } catch (error: unknown) {
             console.error(`❌ GrepBase error:`, error);
             throw error;
         }
