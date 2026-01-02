@@ -49,6 +49,8 @@ export default function SetupFlow({ repoUrl, onCancel }: SetupFlowProps) {
     const [repoData, setRepoData] = useState<RepoData | null>(null);
     const [fetchError, setFetchError] = useState<string | null>(null);
     const [fetchingRepo, setFetchingRepo] = useState(true);
+    const [jobId, setJobId] = useState<string | null>(null);
+    const [jobProgress, setJobProgress] = useState(0);
     const fetchStarted = useRef(false);
 
     // AI Summary state
@@ -92,23 +94,76 @@ export default function SetupFlow({ repoUrl, onCancel }: SetupFlowProps) {
 
                 const data = await res.json() as {
                     error?: string;
-                    repository: RepoData;
+                    repository?: RepoData;
+                    jobId?: string;
+                    status?: string;
+                    cached?: boolean;
                 };
 
                 if (!res.ok) {
                     throw new Error(data.error || 'Failed to fetch repository');
                 }
 
-                setRepoData(data.repository);
+                // If cached, we have the data immediately
+                if (data.cached && data.repository) {
+                    setRepoData(data.repository);
+                    setFetchingRepo(false);
+                    return;
+                }
+
+                // If queued, start polling for status
+                if (data.jobId) {
+                    setJobId(data.jobId);
+                    // Polling will be handled by separate effect
+                    return;
+                }
+
+                // Fallback: direct response (shouldn't happen with new queue system)
+                if (data.repository) {
+                    setRepoData(data.repository);
+                    setFetchingRepo(false);
+                }
             } catch (err) {
                 setFetchError(err instanceof Error ? err.message : 'Failed to fetch repository');
-            } finally {
                 setFetchingRepo(false);
             }
         }
 
         fetchRepo();
     }, [repoUrl]);
+
+    // Poll for job status
+    useEffect(() => {
+        if (!jobId) return;
+
+        const pollInterval = setInterval(async () => {
+            try {
+                const res = await fetch(`/api/jobs/${jobId}`);
+                const data = await res.json() as {
+                    status: string;
+                    progress: number;
+                    repository?: RepoData;
+                    error?: string;
+                };
+
+                setJobProgress(data.progress);
+
+                if (data.status === 'completed' && data.repository) {
+                    setRepoData(data.repository);
+                    setFetchingRepo(false);
+                    clearInterval(pollInterval);
+                } else if (data.status === 'failed') {
+                    setFetchError(data.error || 'Failed to ingest repository');
+                    setFetchingRepo(false);
+                    clearInterval(pollInterval);
+                }
+            } catch (err) {
+                console.error('Failed to poll job status:', err);
+            }
+        }, 2000); // Poll every 2 seconds
+
+        return () => clearInterval(pollInterval);
+    }, [jobId]);
 
     function updateSetting(provider: AIProviderType, key: keyof ProviderSettings, value: string) {
         setSettings(prev => ({
@@ -275,7 +330,11 @@ export default function SetupFlow({ repoUrl, onCancel }: SetupFlowProps) {
                             <div>
                                 <h2>Configure AI Provider</h2>
                                 <p className={styles.headerSub}>
-                                    {fetchingRepo ? 'Fetching repository...' : `Ready to analyze ${repoData?.owner}/${repoData?.name}`}
+                                    {fetchingRepo
+                                        ? jobId
+                                            ? `Processing repository... ${jobProgress}%`
+                                            : 'Fetching repository...'
+                                        : `Ready to analyze ${repoData?.owner}/${repoData?.name}`}
                                 </p>
                             </div>
                         </div>

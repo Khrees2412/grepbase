@@ -6,19 +6,15 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
-import { repositories, commits } from '@/db';
+import { repositories, ingestJobs } from '@/db';
 import { eq, desc } from 'drizzle-orm';
-import {
-    fetchRepository,
-    fetchReadme,
-    fetchCommitHistory,
-} from '@/services/github';
 import { ingestRepoSchema } from '@/lib/validation';
 import { parseGitHubUrl, sanitizeGitHubUrl } from '@/lib/sanitize';
 import { logger } from '@/lib/logger';
 import { rateLimiter } from '@/lib/rate-limit';
 import { RATE_LIMITS } from '@/lib/constants';
 import { analytics } from '@/lib/analytics';
+import { getRequestContext } from '@cloudflare/next-on-pages';
 
 export const runtime = 'edge';
 
@@ -116,65 +112,54 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ repository: existing[0], cached: true });
         }
 
-        // Fetch repository data from GitHub
-        requestLogger.info({ owner, repo: repoName }, 'Fetching repository from GitHub');
-        const repoData = await fetchRepository(owner, repoName);
-        const readme = await fetchReadme(owner, repoName);
-
-        // Fetch commit history
-        requestLogger.info({ owner, repo: repoName }, 'Fetching commit history');
-        const commitHistory = await fetchCommitHistory(owner, repoName, 100);
-
-        // Save to database
+        // Queue the repository ingestion for background processing
+        const jobId = crypto.randomUUID();
         const now = new Date();
-        const [newRepo] = await db
-            .insert(repositories)
-            .values({
-                url: repoData.url,
-                owner: repoData.owner,
-                name: repoData.name,
-                description: repoData.description,
-                stars: repoData.stars,
-                defaultBranch: repoData.defaultBranch,
-                readme: readme,
-                lastFetched: now,
-                createdAt: now,
-            })
-            .returning();
 
-        // Save commits
-        if (commitHistory.length > 0) {
-            await db.insert(commits).values(
-                commitHistory.map((commit, index) => ({
-                    repoId: newRepo.id,
-                    sha: commit.sha,
-                    message: commit.message,
-                    authorName: commit.authorName,
-                    authorEmail: commit.authorEmail,
-                    date: commit.date,
-                    order: index + 1,
-                }))
+        // Create job record
+        await db.insert(ingestJobs).values({
+            jobId,
+            url: sanitizedUrl,
+            status: 'pending',
+            progress: 0,
+            createdAt: now,
+            updatedAt: now,
+        });
+
+        // Send to queue
+        try {
+            const { env } = getRequestContext<{ REPO_INGEST_QUEUE: Queue }>();
+            await env.REPO_INGEST_QUEUE.send({
+                jobId,
+                url: sanitizedUrl,
+                clientId,
+            });
+
+            requestLogger.info({ jobId, owner, repo: repoName }, 'Repository ingest job queued');
+
+            return NextResponse.json({
+                jobId,
+                status: 'pending',
+                message: 'Repository ingestion queued for background processing',
+            }, { status: 202 });
+        } catch (queueError) {
+            requestLogger.error({ error: queueError }, 'Failed to queue ingest job');
+
+            // Update job status
+            await db
+                .update(ingestJobs)
+                .set({
+                    status: 'failed',
+                    error: 'Failed to queue job',
+                    updatedAt: new Date(),
+                })
+                .where(eq(ingestJobs.jobId, jobId));
+
+            return NextResponse.json(
+                { error: 'Failed to queue repository ingestion' },
+                { status: 500 }
             );
         }
-
-        const duration = Date.now() - startTime;
-
-        // Track successful ingest
-        await analytics.trackRepoIngest({
-            owner,
-            repo: repoName,
-            commitsCount: commitHistory.length,
-            cached: false,
-            duration,
-        });
-
-        requestLogger.info({ owner, repo: repoName, commitsCount: commitHistory.length, duration }, 'Repository ingested successfully');
-
-        return NextResponse.json({
-            repository: newRepo,
-            commitsCount: commitHistory.length,
-            cached: false,
-        });
     } catch (error) {
         const duration = Date.now() - startTime;
 

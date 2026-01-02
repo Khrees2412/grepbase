@@ -7,6 +7,18 @@ pages_build_output_dir = ".vercel/output/static"
 [[analytics_engine_datasets]]
 binding = "ANALYTICS"
 
+# Queues for background processing
+[[queues.producers]]
+binding = "REPO_INGEST_QUEUE"
+queue = "repo-ingest-queue"
+
+[[queues.consumers]]
+queue = "repo-ingest-queue"
+max_batch_size = 1
+max_batch_timeout = 30
+max_retries = 3
+dead_letter_queue = "repo-ingest-dlq"
+
 # Observability
 [observability]
 enabled = true

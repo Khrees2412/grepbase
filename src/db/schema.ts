@@ -54,6 +54,24 @@ export const analyses = sqliteTable('analyses', {
     index('idx_analyses_commit_id').on(table.commitId),
 ]);
 
+// Ingest Jobs table - tracks background repository ingestion
+export const ingestJobs = sqliteTable('ingest_jobs', {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    jobId: text('job_id').notNull().unique(),
+    url: text('url').notNull(),
+    status: text('status').notNull(), // 'pending', 'processing', 'completed', 'failed'
+    repoId: integer('repo_id').references(() => repositories.id),
+    progress: integer('progress').default(0), // 0-100
+    totalCommits: integer('total_commits').default(0),
+    processedCommits: integer('processed_commits').default(0),
+    error: text('error'),
+    createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
+}, (table) => [
+    index('idx_jobs_job_id').on(table.jobId),
+    index('idx_jobs_status').on(table.status),
+]);
+
 // Types for inserting and selecting
 export type Repository = typeof repositories.$inferSelect;
 export type NewRepository = typeof repositories.$inferInsert;
@@ -61,5 +79,7 @@ export type Commit = typeof commits.$inferSelect;
 export type NewCommit = typeof commits.$inferInsert;
 export type File = typeof files.$inferSelect;
 export type NewFile = typeof files.$inferInsert;
+export type IngestJob = typeof ingestJobs.$inferSelect;
+export type NewIngestJob = typeof ingestJobs.$inferInsert;
 export type Analysis = typeof analyses.$inferSelect;
 export type NewAnalysis = typeof analyses.$inferInsert;
