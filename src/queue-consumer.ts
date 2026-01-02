@@ -21,7 +21,7 @@ interface IngestMessage {
 export default {
     async queue(
         batch: MessageBatch<IngestMessage>,
-        env: Env
+        env: CloudflareEnv
     ): Promise<void> {
         const db = getDb();
 
