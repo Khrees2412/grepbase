@@ -27,5 +27,31 @@ id = "6fbff750f7314c7ca6435e68966769bb"
 [env.production]
 vars = { ENVIRONMENT = "production" }
 
+[[env.production.d1_databases]]
+binding = "grepbase_db"
+database_name = "grepbase-db"
+database_id = "326233af-b937-4c0b-ab47-7349f251b961"
+migrations_dir = "drizzle"
+
+[[env.production.kv_namespaces]]
+binding = "grepbase_cache"
+id = "6fbff750f7314c7ca6435e68966769bb"
+
+[[env.production.analytics_engine_datasets]]
+binding = "ANALYTICS"
+
 [env.preview]
 vars = { ENVIRONMENT = "preview" }
+
+[[env.preview.d1_databases]]
+binding = "grepbase_db"
+database_name = "grepbase-db"
+database_id = "326233af-b937-4c0b-ab47-7349f251b961"
+migrations_dir = "drizzle"
+
+[[env.preview.kv_namespaces]]
+binding = "grepbase_cache"
+id = "6fbff750f7314c7ca6435e68966769bb"
+
+[[env.preview.analytics_engine_datasets]]
+binding = "ANALYTICS"
