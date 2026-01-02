@@ -13,6 +13,7 @@ Designed for ease of use and deep understanding, Grepbase supports both cloud-ba
     -   **Cloud**: Google Gemini (including Gemini 3/2.0), OpenAI (GPT-5/4o), Anthropic (Claude Opus/Sonnet).
     -   **Local**: Ollama (LLaMA 3.2, Mistral), LMStudio.
 -   **High Performance**: Built on Cloudflare's edge network (Pages, D1, KV) for speed and low latency.
+-   **Production Ready**: Includes Rate Limiting, Analytics, and Request Validation.
 -   **Modern Tech Stack**: Next.js 16 App Router, Drizzle ORM, and Vercel AI SDK.
 
 ## Tech Stack
@@ -90,6 +91,26 @@ bun run dev
 bun run pages:preview
 ```
 This builds the app using `@cloudflare/next-on-pages` and runs it using `wrangler pages dev`.
+
+### 6. Testing
+
+Run the test suite to verify functionality:
+
+```bash
+# Run unit tests
+bun test
+
+# Run linter
+bun run lint
+```
+
+## CI/CD
+
+This project uses GitHub Actions for continuous integration. Every push to `main` and every Pull Request triggers a workflow that:
+- Lints the codebase
+- Checks TypeScript types
+- Runs unit tests
+
 
 ## Project Structure
 

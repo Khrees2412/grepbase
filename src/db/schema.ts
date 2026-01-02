@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core';
 
 // Repositories table - stores cached GitHub repo metadata
 export const repositories = sqliteTable('repositories', {
@@ -12,7 +12,9 @@ export const repositories = sqliteTable('repositories', {
     readme: text('readme'),
     lastFetched: integer('last_fetched', { mode: 'timestamp' }).notNull(),
     createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
-});
+}, (table) => [
+    index('idx_repos_owner_name').on(table.owner, table.name),
+]);
 
 // Commits table - stores commit history for each repo
 export const commits = sqliteTable('commits', {
@@ -24,7 +26,10 @@ export const commits = sqliteTable('commits', {
     authorEmail: text('author_email'),
     date: integer('date', { mode: 'timestamp' }).notNull(),
     order: integer('order').notNull(), // 1 = first commit, ascending
-});
+}, (table) => [
+    index('idx_commits_repo_id').on(table.repoId),
+    index('idx_commits_sha').on(table.sha),
+]);
 
 // Files table - stores file snapshots at each commit
 export const files = sqliteTable('files', {
@@ -34,7 +39,9 @@ export const files = sqliteTable('files', {
     content: text('content'),
     size: integer('size').default(0),
     language: text('language'),
-});
+}, (table) => [
+    index('idx_files_commit_id').on(table.commitId),
+]);
 
 // Analyses table - stores cached AI explanations
 export const analyses = sqliteTable('analyses', {
@@ -43,7 +50,9 @@ export const analyses = sqliteTable('analyses', {
     provider: text('provider').notNull(), // gemini, openai, anthropic, ollama
     explanation: text('explanation').notNull(),
     createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
-});
+}, (table) => [
+    index('idx_analyses_commit_id').on(table.commitId),
+]);
 
 // Types for inserting and selecting
 export type Repository = typeof repositories.$inferSelect;
