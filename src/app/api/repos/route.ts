@@ -38,7 +38,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
     try {
         const db = getDb();
-        const body = await request.json();
+        const body = await request.json() as { url: string };
         const { url } = body;
 
         if (!url) {

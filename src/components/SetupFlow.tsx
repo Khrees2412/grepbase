@@ -83,7 +83,10 @@ export default function SetupFlow({ repoUrl, onCancel }: SetupFlowProps) {
                     body: JSON.stringify({ url: repoUrl }),
                 });
 
-                const data = await res.json();
+                const data = await res.json() as {
+                    error?: string;
+                    repository: RepoData;
+                };
 
                 if (!res.ok) {
                     throw new Error(data.error || 'Failed to fetch repository');
@@ -134,7 +137,7 @@ export default function SetupFlow({ repoUrl, onCancel }: SetupFlowProps) {
                 }),
             });
 
-            const data = await response.json();
+            const data = await response.json() as { error?: string };
 
             if (!response.ok) {
                 throw new Error(data.error || 'Connection failed');
@@ -183,7 +186,7 @@ export default function SetupFlow({ repoUrl, onCancel }: SetupFlowProps) {
             });
 
             if (!response.ok) {
-                const data = await response.json();
+                const data = await response.json() as { error?: string };
                 throw new Error(data.error || 'Failed to generate summary');
             }
 

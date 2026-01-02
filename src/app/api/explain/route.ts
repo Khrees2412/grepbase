@@ -15,14 +15,25 @@ export const runtime = 'edge';
 export async function POST(request: NextRequest) {
     try {
         const db = getDb();
-        const body = await request.json();
+        const body = await request.json() as {
+            type: 'commit' | 'project' | 'question' | 'day-summary';
+            repoId: number;
+            commitSha?: string;
+            question?: string;
+            provider?: AIProviderConfig;
+            commits?: Array<{ sha: string; message: string; authorName: string | null; date: string }>;
+            projectName?: string;
+            projectOwner?: string;
+            apiKey?: string;
+            model?: string;
+            baseUrl?: string;
+        };
         const {
-            type, // 'commit' | 'project' | 'question' | 'day-summary'
+            type,
             repoId,
             commitSha,
             question,
-            provider, // AIProviderConfig
-            // For day-summary type
+            provider,
             commits: dayCommits,
             projectName,
             projectOwner,

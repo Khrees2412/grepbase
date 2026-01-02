@@ -93,7 +93,10 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 }),
             });
 
-            const data = await response.json();
+            const data = await response.json() as {
+                error?: string;
+                models?: string[];
+            };
 
             if (!response.ok) {
                 throw new Error(data.error || 'Connection failed');

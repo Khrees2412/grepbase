@@ -1,5 +1,7 @@
 'use client';
 
+export const runtime = 'edge';
+
 import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import {
@@ -49,7 +51,11 @@ export default function TimelinePage({ params }: { params: Promise<{ id: string 
         async function fetchData() {
             try {
                 const res = await fetch(`/api/repos/${id}/commits`);
-                const data = await res.json();
+                const data = await res.json() as {
+                    error?: string;
+                    repository: Repository;
+                    commits: Commit[];
+                };
 
                 if (!res.ok) {
                     throw new Error(data.error || 'Failed to fetch repository');

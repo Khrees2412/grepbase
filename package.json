@@ -8,15 +8,20 @@
     "start": "next start",
     "lint": "eslint",
     "db:generate": "drizzle-kit generate",
-    "db:push": "drizzle-kit push"
+    "db:push": "drizzle-kit push",
+    "pages:build": "bun x @cloudflare/next-on-pages",
+    "pages:preview": "bun run pages:build && wrangler pages dev .vercel/output/static",
+    "pages:deploy": "bun run pages:build && wrangler pages deploy .vercel/output/static",
+    "d1:create": "wrangler d1 create grepbase-db",
+    "d1:migrate": "wrangler d1 migrations apply grepbase-db"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.1",
     "@ai-sdk/google": "^3.0.1",
     "@ai-sdk/openai": "^3.0.1",
     "@ai-sdk/openai-compatible": "^2.0.1",
+    "@cloudflare/next-on-pages": "^1.13.16",
     "ai": "^6.0.3",
-    "better-sqlite3": "^12.5.0",
     "drizzle-orm": "^0.45.1",
     "lucide-react": "^0.562.0",
     "next": "16.1.1",
@@ -26,21 +31,21 @@
     "shiki": "^3.20.0"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.13",
+    "@cloudflare/workers-types": "^4.20260101.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "drizzle-kit": "^0.31.8",
     "eslint": "^9",
     "eslint-config-next": "16.1.1",
-    "typescript": "^5"
+    "typescript": "^5",
+    "wrangler": "^4.54.0"
   },
   "ignoreScripts": [
     "sharp",
     "unrs-resolver"
   ],
   "trustedDependencies": [
-    "better-sqlite3",
     "sharp",
     "unrs-resolver"
   ]

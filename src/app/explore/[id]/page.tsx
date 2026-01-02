@@ -1,5 +1,7 @@
 'use client';
 
+export const runtime = 'edge';
+
 import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import {
@@ -62,7 +64,11 @@ export default function ExplorePage({ params }: { params: Promise<{ id: string }
         async function fetchData() {
             try {
                 const res = await fetch(`/api/repos/${id}/commits`);
-                const data = await res.json();
+                const data = await res.json() as {
+                    error?: string;
+                    repository: Repository;
+                    commits: Commit[];
+                };
 
                 if (!res.ok) {
                     throw new Error(data.error || 'Failed to fetch repository');
@@ -89,7 +95,7 @@ export default function ExplorePage({ params }: { params: Promise<{ id: string }
             setSelectedFile(null);
             try {
                 const res = await fetch(`/api/repos/${id}/commits/${currentCommit.sha}`);
-                const data = await res.json();
+                const data = await res.json() as { files?: FileData[] };
 
                 if (res.ok) {
                     setFiles(data.files || []);
@@ -127,7 +133,7 @@ export default function ExplorePage({ params }: { params: Promise<{ id: string }
             const res = await fetch(
                 `/api/repos/${id}/commits/${currentCommit?.sha}/content?path=${encodeURIComponent(file.path)}`
             );
-            const data = await res.json();
+            const data = await res.json() as { content?: string };
 
             if (res.ok && data.content) {
                 // Update file in files array with content

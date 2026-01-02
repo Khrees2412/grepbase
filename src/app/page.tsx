@@ -106,7 +106,7 @@ export default function Home() {
   async function fetchRepositories() {
     try {
       const res = await fetch('/api/repos');
-      const data = await res.json();
+      const data = await res.json() as { repositories?: Repository[] };
       setRepositories(data.repositories || []);
     } catch (err) {
       console.error('Failed to fetch repositories:', err);

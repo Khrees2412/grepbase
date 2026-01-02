@@ -67,7 +67,14 @@ export async function fetchRepository(owner: string, repo: string): Promise<GitH
         throw new Error(`Failed to fetch repository: ${response.status} ${response.statusText}`);
     }
 
-    const data = await response.json();
+    const data = await response.json() as {
+        owner: { login: string };
+        name: string;
+        description: string | null;
+        stargazers_count: number;
+        default_branch: string;
+        html_url: string;
+    };
 
     return {
         owner: data.owner.login,
@@ -125,7 +132,14 @@ export async function fetchCommitHistory(
             throw new Error(`Failed to fetch commits: ${response.status} ${response.statusText}`);
         }
 
-        const data = await response.json();
+        const data = await response.json() as Array<{
+            sha: string;
+            commit: {
+                message: string;
+                author?: { name?: string; email?: string; date?: string };
+                committer?: { date?: string };
+            };
+        }>;
         if (data.length === 0) break;
 
         for (const commit of data) {
@@ -134,7 +148,7 @@ export async function fetchCommitHistory(
                 message: commit.commit.message,
                 authorName: commit.commit.author?.name || null,
                 authorEmail: commit.commit.author?.email || null,
-                date: new Date(commit.commit.author?.date || commit.commit.committer?.date),
+                date: new Date(commit.commit.author?.date || commit.commit.committer?.date || new Date()),
             });
         }
 
@@ -168,11 +182,13 @@ export async function fetchFilesAtCommit(
         throw new Error(`Failed to fetch files: ${response.status} ${response.statusText}`);
     }
 
-    const data = await response.json();
+    const data = await response.json() as {
+        tree: Array<{ path: string; type: string; size?: number; sha: string }>;
+    };
 
     return data.tree
-        .filter((item: { type: string }) => item.type === 'blob')
-        .map((item: { path: string; type: string; size: number; sha: string }) => ({
+        .filter((item) => item.type === 'blob')
+        .map((item) => ({
             path: item.path,
             type: 'file' as const,
             size: item.size || 0,

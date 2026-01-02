@@ -9,7 +9,7 @@ export const runtime = 'edge';
 
 export async function POST(request: NextRequest) {
     try {
-        const body = await request.json();
+        const body = await request.json() as { provider: string; baseUrl?: string; apiKey?: string };
         const { provider, baseUrl } = body;
 
         if (!provider) {
@@ -34,14 +34,17 @@ export async function POST(request: NextRequest) {
                 );
             }
 
-            const data = await response.json();
+            const data = await response.json() as {
+                models?: Array<{ name: string }>;
+                data?: Array<{ id: string }>;
+            };
 
             // Return available models
             let models: string[] = [];
             if (provider === 'ollama' && data.models) {
-                models = data.models.map((m: { name: string }) => m.name);
+                models = data.models.map((m) => m.name);
             } else if (provider === 'lmstudio' && data.data) {
-                models = data.data.map((m: { id: string }) => m.id);
+                models = data.data.map((m) => m.id);
             }
 
             return NextResponse.json({

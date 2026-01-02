@@ -4,7 +4,7 @@ compatibility_flags = ["nodejs_compat"]
 
 # D1 Database binding
 [[d1_databases]]
-binding = "DB"
+binding = "grepbase_db"
 database_name = "grepbase-db"
-database_id = "YOUR_DATABASE_ID" # Replace after running: npx wrangler d1 create grepbase-db
+database_id = "326233af-b937-4c0b-ab47-7349f251b961"
 migrations_dir = "drizzle"
