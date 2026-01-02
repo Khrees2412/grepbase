@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { X, Key, Check, AlertCircle, Loader2 } from 'lucide-react';
 import styles from './SettingsModal.module.css';
 import { type AIProviderType, PROVIDER_NAMES, getAvailableModels } from '@/services/ai-providers';
+import { secureStorage } from '@/lib/secure-storage';
 
 interface SettingsModalProps {
     isOpen: boolean;
@@ -16,7 +17,7 @@ interface ProviderSettings {
     baseUrl?: string;
 }
 
-const STORAGE_KEY = 'grepbase_ai_settings';
+const STORAGE_KEY = 'ai_settings';
 
 export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     const [activeProvider, setActiveProvider] = useState<AIProviderType>('gemini');
@@ -31,28 +32,42 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     const [testResult, setTestResult] = useState<'success' | 'error' | null>(null);
     const [testError, setTestError] = useState<string | null>(null);
 
-    // Load settings from localStorage on mount
+    // Load settings from secure storage on mount
     useEffect(() => {
-        const saved = localStorage.getItem(STORAGE_KEY);
+        // Try session storage first (more secure for API keys)
+        const sessionData = secureStorage.getSessionItem<Record<string, ProviderSettings & { activeProvider?: AIProviderType }>>(STORAGE_KEY);
+        if (sessionData) {
+            setSettings(prev => ({ ...prev, ...sessionData }));
+            if (sessionData.activeProvider) {
+                setActiveProvider(sessionData.activeProvider);
+            }
+            return;
+        }
+
+        // Fall back to secure localStorage
+        const saved = secureStorage.getSecureItem<Record<string, ProviderSettings & { activeProvider?: AIProviderType }>>(STORAGE_KEY);
         if (saved) {
-            try {
-                const parsed = JSON.parse(saved);
-                setSettings(prev => ({ ...prev, ...parsed }));
-                if (parsed.activeProvider) {
-                    setActiveProvider(parsed.activeProvider);
-                }
-            } catch (e) {
-                console.error('Failed to parse saved settings:', e);
+            setSettings(prev => ({ ...prev, ...saved }));
+            if (saved.activeProvider) {
+                setActiveProvider(saved.activeProvider);
             }
         }
     }, []);
 
-    // Save settings to localStorage
+    // Save settings to secure storage
     function saveSettings() {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        const data = {
             ...settings,
             activeProvider,
-        }));
+        };
+
+        // Save to session storage (cleared on tab close) for better security
+        secureStorage.setSessionItem(STORAGE_KEY, data);
+
+        // Also save to obfuscated localStorage for persistence
+        // Note: Users should ideally re-enter API keys per session
+        secureStorage.setSecureItem(STORAGE_KEY, data);
+
         onClose();
     }
 

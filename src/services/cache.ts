@@ -1,11 +1,7 @@
 import { getRequestContext } from '@cloudflare/next-on-pages';
+import { logger } from '@/lib/logger';
 
-export const CACHE_TTL = {
-    MINUTE: 60,
-    HOUR: 3600,
-    DAY: 86400,
-    WEEK: 604800,
-};
+const cacheLogger = logger.child({ service: 'cache' });
 
 export class CacheService {
     private getKv(): KVNamespace | null {
@@ -25,10 +21,15 @@ export class CacheService {
         const kv = this.getKv();
         if (!kv) return null;
         try {
-            // Using "json" type automatically parses the value
-            return await kv.get(key, 'json');
+            const value = await kv.get(key, 'json');
+            if (value) {
+                cacheLogger.debug({ key }, 'Cache hit');
+            } else {
+                cacheLogger.debug({ key }, 'Cache miss');
+            }
+            return value;
         } catch (e) {
-            console.error(`Cache get failed for key ${key}:`, e);
+            cacheLogger.error({ key, error: e }, 'Cache get failed');
             return null;
         }
     }
@@ -46,8 +47,9 @@ export class CacheService {
                 options.expirationTtl = ttl;
             }
             await kv.put(key, JSON.stringify(value), options);
+            cacheLogger.debug({ key, ttl }, 'Cache set');
         } catch (e) {
-            console.error(`Cache set failed for key ${key}:`, e);
+            cacheLogger.error({ key, error: e }, 'Cache set failed');
         }
     }
 
@@ -59,8 +61,58 @@ export class CacheService {
         if (!kv) return;
         try {
             await kv.delete(key);
+            cacheLogger.debug({ key }, 'Cache deleted');
         } catch (e) {
-            console.error(`Cache delete failed for key ${key}:`, e);
+            cacheLogger.error({ key, error: e }, 'Cache delete failed');
+        }
+    }
+
+    /**
+     * Delete multiple keys matching a pattern
+     * Note: KV doesn't support pattern matching natively, so this is a workaround
+     */
+    async deletePattern(pattern: string): Promise<void> {
+        const kv = this.getKv();
+        if (!kv) return;
+
+        try {
+            // For KV, we need to track keys separately or use a prefix list
+            // This is a placeholder - in production, you'd maintain a separate list
+            cacheLogger.warn({ pattern }, 'Pattern deletion not fully implemented for KV');
+        } catch (e) {
+            cacheLogger.error({ pattern, error: e }, 'Pattern deletion failed');
+        }
+    }
+
+    /**
+     * Invalidate cache for a specific repository
+     */
+    async invalidateRepo(owner: string, repo: string): Promise<void> {
+        const keys = [
+            `repo:${owner}:${repo}`,
+            `commits:${owner}:${repo}:100`,
+        ];
+
+        cacheLogger.info({ owner, repo, keysCount: keys.length }, 'Invalidating repository cache');
+
+        for (const key of keys) {
+            await this.delete(key);
+        }
+    }
+
+    /**
+     * Invalidate cache for a specific commit
+     */
+    async invalidateCommit(owner: string, repo: string, sha: string): Promise<void> {
+        const keys = [
+            `diff:${owner}:${repo}:${sha}`,
+            `files:${owner}:${repo}:${sha}`,
+        ];
+
+        cacheLogger.info({ owner, repo, sha, keysCount: keys.length }, 'Invalidating commit cache');
+
+        for (const key of keys) {
+            await this.delete(key);
         }
     }
 }

@@ -9,25 +9,75 @@ import { eq, and } from 'drizzle-orm';
 import { fetchCommitDiff } from '@/services/github';
 import { explainCommit, explainProject, answerQuestion } from '@/services/explain';
 import type { AIProviderConfig } from '@/services/ai-providers';
+import { explainRequestSchema } from '@/lib/validation';
+import { logger } from '@/lib/logger';
+import { rateLimiter } from '@/lib/rate-limit';
+import { RATE_LIMITS, AI_CONSTANTS } from '@/lib/constants';
+import { analytics } from '@/lib/analytics';
 
 export const runtime = 'edge';
 
 export async function POST(request: NextRequest) {
+    const requestLogger = logger.child({ endpoint: '/api/explain' });
+    const startTime = Date.now();
+
     try {
+        // Rate limiting
+        const clientId = rateLimiter.getClientId(request);
+        const rateLimitResult = await rateLimiter.checkLimit(clientId, RATE_LIMITS.EXPLAIN_API, 60);
+
+        if (!rateLimitResult.success) {
+            requestLogger.warn({ clientId, remaining: rateLimitResult.remaining }, 'Rate limit exceeded');
+
+            // Track rate limit event
+            await analytics.trackRateLimit({
+                endpoint: '/api/explain',
+                clientId,
+                blocked: true,
+            });
+
+            return new Response(
+                JSON.stringify({
+                    error: 'Rate limit exceeded',
+                    limit: rateLimitResult.limit,
+                    reset: rateLimitResult.reset,
+                }),
+                {
+                    status: 429,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-RateLimit-Limit': rateLimitResult.limit.toString(),
+                        'X-RateLimit-Remaining': rateLimitResult.remaining.toString(),
+                        'X-RateLimit-Reset': rateLimitResult.reset.toString(),
+                    },
+                }
+            );
+        }
+
+        // Track successful rate limit check
+        await analytics.trackRateLimit({
+            endpoint: '/api/explain',
+            clientId,
+            blocked: false,
+        });
+
         const db = getDb();
-        const body = await request.json() as {
-            type: 'commit' | 'project' | 'question' | 'day-summary';
-            repoId: number;
-            commitSha?: string;
-            question?: string;
-            provider?: AIProviderConfig;
-            commits?: Array<{ sha: string; message: string; authorName: string | null; date: string }>;
-            projectName?: string;
-            projectOwner?: string;
-            apiKey?: string;
-            model?: string;
-            baseUrl?: string;
-        };
+        const rawBody = await request.json();
+
+        // Validate request with Zod
+        const parseResult = explainRequestSchema.safeParse(rawBody);
+        if (!parseResult.success) {
+            requestLogger.warn({ errors: parseResult.error.errors }, 'Validation failed');
+            return new Response(
+                JSON.stringify({
+                    error: 'Validation failed',
+                    details: parseResult.error.errors,
+                }),
+                { status: 400, headers: { 'Content-Type': 'application/json' } }
+            );
+        }
+
+        const body = parseResult.data;
         const {
             type,
             repoId,
@@ -42,27 +92,15 @@ export async function POST(request: NextRequest) {
             baseUrl,
         } = body;
 
-        // Validate provider config (local providers don't need API keys)
-        const isLocalProvider = provider?.type === 'ollama' || provider?.type === 'lmstudio';
-        if (!provider?.type || (!provider?.apiKey && !isLocalProvider)) {
-            return new Response(
-                JSON.stringify({ error: 'AI provider configuration is required' }),
-                { status: 400, headers: { 'Content-Type': 'application/json' } }
-            );
-        }
-
         // Handle provider config - can come from nested object or flat params
-        const providerType = provider?.type || body.provider;
-        const providerApiKey = provider?.apiKey || apiKey;
-        const providerBaseUrl = provider?.baseUrl || baseUrl;
-        const providerModel = provider?.model || model;
-
         const providerConfig: AIProviderConfig = {
-            type: providerType,
-            apiKey: providerApiKey,
-            baseUrl: providerBaseUrl,
-            model: providerModel,
+            type: provider?.type || body.provider!,
+            apiKey: provider?.apiKey || apiKey,
+            baseUrl: provider?.baseUrl || baseUrl,
+            model: provider?.model || model,
         };
+
+        requestLogger.info({ type, repoId, provider: providerConfig.type }, 'Processing explain request');
 
         // Get repository info
         const repo = await db
@@ -72,6 +110,7 @@ export async function POST(request: NextRequest) {
             .limit(1);
 
         if (repo.length === 0) {
+            requestLogger.warn({ repoId }, 'Repository not found');
             return new Response(
                 JSON.stringify({ error: 'Repository not found' }),
                 { status: 404, headers: { 'Content-Type': 'application/json' } }
@@ -106,6 +145,7 @@ export async function POST(request: NextRequest) {
                 .limit(1);
 
             if (commit.length === 0) {
+                requestLogger.warn({ repoId, commitSha }, 'Commit not found');
                 return new Response(
                     JSON.stringify({ error: 'Commit not found' }),
                     { status: 404, headers: { 'Content-Type': 'application/json' } }
@@ -180,19 +220,51 @@ Provide a brief, engaging summary of what was accomplished. Use markdown formatt
                 model: aiModel,
                 system: systemPrompt,
                 prompt: userPrompt,
-                maxOutputTokens: 800,
+                maxOutputTokens: AI_CONSTANTS.MAX_OUTPUT_TOKENS.DAY_SUMMARY,
             });
         } else {
+            requestLogger.warn({ type }, 'Invalid request type');
             return new Response(
                 JSON.stringify({ error: 'Invalid request type' }),
                 { status: 400, headers: { 'Content-Type': 'application/json' } }
             );
         }
 
+        // Track AI usage
+        const duration = Date.now() - startTime;
+        await analytics.trackAIUsage({
+            provider: providerConfig.type,
+            model: providerConfig.model,
+            type,
+            success: true,
+            duration,
+        });
+
+        // Track request
+        await analytics.trackRequest({
+            endpoint: '/api/explain',
+            method: 'POST',
+            statusCode: 200,
+            duration,
+            clientId: rateLimiter.getClientId(request),
+        });
+
         // Return streaming response
+        requestLogger.info({ type, repoId, duration }, 'Explanation generated successfully');
         return result.toTextStreamResponse();
     } catch (error) {
-        console.error('Error generating explanation:', error);
+        const duration = Date.now() - startTime;
+
+        // Track failed request
+        await analytics.trackRequest({
+            endpoint: '/api/explain',
+            method: 'POST',
+            statusCode: 500,
+            duration,
+            clientId: rateLimiter.getClientId(request),
+        });
+
+        requestLogger.error({ error, errorMessage: error instanceof Error ? error.message : 'Unknown error', duration }, 'Error generating explanation');
         return new Response(
             JSON.stringify({
                 error: error instanceof Error ? error.message : 'Failed to generate explanation',

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Key, Check, AlertCircle, Loader2, Sparkles, ArrowRight, RefreshCw } from 'lucide-react';
 import styles from './SetupFlow.module.css';
 import { type AIProviderType, PROVIDER_NAMES, getAvailableModels } from '@/services/ai-providers';
+import { secureStorage } from '@/lib/secure-storage';
 
 interface SetupFlowProps {
     repoUrl: string;
@@ -27,7 +28,7 @@ interface RepoData {
     stars: number;
 }
 
-const STORAGE_KEY = 'grepbase_ai_settings';
+const STORAGE_KEY = 'ai_settings';
 
 export default function SetupFlow({ repoUrl, onCancel }: SetupFlowProps) {
     const router = useRouter();
@@ -54,18 +55,24 @@ export default function SetupFlow({ repoUrl, onCancel }: SetupFlowProps) {
     const [summary, setSummary] = useState('');
     const [generatingSummary, setGeneratingSummary] = useState(false);
 
-    // Load settings from localStorage and start fetching repo
+    // Load settings from secure storage and start fetching repo
     useEffect(() => {
-        const saved = localStorage.getItem(STORAGE_KEY);
+        // Try session storage first
+        const sessionData = secureStorage.getSessionItem<Record<string, ProviderSettings & { activeProvider?: AIProviderType }>>(STORAGE_KEY);
+        if (sessionData) {
+            setSettings(prev => ({ ...prev, ...sessionData }));
+            if (sessionData.activeProvider) {
+                setActiveProvider(sessionData.activeProvider);
+            }
+            return;
+        }
+
+        // Fall back to secure localStorage
+        const saved = secureStorage.getSecureItem<Record<string, ProviderSettings & { activeProvider?: AIProviderType }>>(STORAGE_KEY);
         if (saved) {
-            try {
-                const parsed = JSON.parse(saved);
-                setSettings(prev => ({ ...prev, ...parsed }));
-                if (parsed.activeProvider) {
-                    setActiveProvider(parsed.activeProvider);
-                }
-            } catch (e) {
-                console.error('Failed to parse saved settings:', e);
+            setSettings(prev => ({ ...prev, ...saved }));
+            if (saved.activeProvider) {
+                setActiveProvider(saved.activeProvider);
             }
         }
     }, []);
@@ -153,11 +160,14 @@ export default function SetupFlow({ repoUrl, onCancel }: SetupFlowProps) {
     }
 
     function saveAndContinue() {
-        // Save settings
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        // Save settings to secure storage
+        const data = {
             ...settings,
             activeProvider,
-        }));
+        };
+
+        secureStorage.setSessionItem(STORAGE_KEY, data);
+        secureStorage.setSecureItem(STORAGE_KEY, data);
 
         // Move to loading/summary step
         setStep('loading');

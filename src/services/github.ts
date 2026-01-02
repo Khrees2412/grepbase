@@ -3,8 +3,11 @@
  * Uses the public GitHub API (no auth required for public repos)
  */
 
-const GITHUB_API_BASE = 'https://api.github.com';
-import { cache, CACHE_TTL } from './cache';
+import { cache } from './cache';
+import { CACHE_TTL, GITHUB } from '@/lib/constants';
+import { logger } from '@/lib/logger';
+
+const githubLogger = logger.child({ service: 'github' });
 
 export interface GitHubRepo {
     owner: string;
@@ -31,37 +34,19 @@ export interface GitHubFile {
 }
 
 /**
- * Parse a GitHub URL to extract owner and repo name
- */
-export function parseGitHubUrl(url: string): { owner: string; repo: string } | null {
-    // Handle various GitHub URL formats
-    const patterns = [
-        /github\.com\/([^\/]+)\/([^\/\?#]+)/,  // https://github.com/owner/repo
-        /^([^\/]+)\/([^\/]+)$/,                 // owner/repo shorthand
-    ];
-
-    for (const pattern of patterns) {
-        const match = url.match(pattern);
-        if (match) {
-            return {
-                owner: match[1],
-                repo: match[2].replace(/\.git$/, ''),
-            };
-        }
-    }
-
-    return null;
-}
-
-/**
  * Fetch repository metadata
  */
 export async function fetchRepository(owner: string, repo: string): Promise<GitHubRepo> {
     const cacheKey = `repo:${owner}:${repo}`;
     const cached = await cache.get<GitHubRepo>(cacheKey);
-    if (cached) return cached;
+    if (cached) {
+        githubLogger.debug({ owner, repo }, 'Repository fetched from cache');
+        return cached;
+    }
 
-    const response = await fetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}`, {
+    githubLogger.info({ owner, repo }, 'Fetching repository from GitHub API');
+
+    const response = await fetch(`${GITHUB.API_BASE}/repos/${owner}/${repo}`, {
         headers: {
             'Accept': 'application/vnd.github.v3+json',
             'User-Agent': 'Grepbase',
@@ -69,6 +54,7 @@ export async function fetchRepository(owner: string, repo: string): Promise<GitH
     });
 
     if (!response.ok) {
+        githubLogger.error({ owner, repo, status: response.status }, 'Failed to fetch repository');
         throw new Error(`Failed to fetch repository: ${response.status} ${response.statusText}`);
     }
 
@@ -91,6 +77,7 @@ export async function fetchRepository(owner: string, repo: string): Promise<GitH
     };
 
     await cache.set(cacheKey, result, CACHE_TTL.HOUR);
+    githubLogger.debug({ owner, repo }, 'Repository cached');
     return result;
 }
 
@@ -99,16 +86,20 @@ export async function fetchRepository(owner: string, repo: string): Promise<GitH
  */
 export async function fetchReadme(owner: string, repo: string): Promise<string | null> {
     try {
-        const response = await fetch(`${GITHUB_API_BASE}/repos/${owner}/${repo}/readme`, {
+        const response = await fetch(`${GITHUB.API_BASE}/repos/${owner}/${repo}/readme`, {
             headers: {
                 'Accept': 'application/vnd.github.v3.raw',
                 'User-Agent': 'Grepbase',
             },
         });
 
-        if (!response.ok) return null;
+        if (!response.ok) {
+            githubLogger.debug({ owner, repo }, 'README not found');
+            return null;
+        }
         return await response.text();
-    } catch {
+    } catch (error) {
+        githubLogger.warn({ owner, repo, error }, 'Error fetching README');
         return null;
     }
 }
@@ -131,7 +122,7 @@ export async function fetchCommitHistory(
 
     while (allCommits.length < maxCommits) {
         const response = await fetch(
-            `${GITHUB_API_BASE}/repos/${owner}/${repo}/commits?per_page=${perPage}&page=${page}`,
+            `${GITHUB.API_BASE}/repos/${owner}/${repo}/commits?per_page=${perPage}&page=${page}`,
             {
                 headers: {
                     'Accept': 'application/vnd.github.v3+json',
@@ -141,6 +132,7 @@ export async function fetchCommitHistory(
         );
 
         if (!response.ok) {
+            githubLogger.error({ owner, repo, status: response.status, page }, 'Failed to fetch commits');
             throw new Error(`Failed to fetch commits: ${response.status} ${response.statusText}`);
         }
 
