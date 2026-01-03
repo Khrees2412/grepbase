@@ -6,13 +6,15 @@ import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import {
     BookOpen, ChevronLeft, ChevronRight, Home, Settings,
-    Loader2, MessageSquare, FileCode, GitCommit, User, Calendar
+    Loader2, MessageSquare, GitCommit, User, Calendar, List, FileCode
 } from 'lucide-react';
 import styles from './page.module.css';
 import SettingsModal from '@/components/SettingsModal';
 import CodeViewer from '@/components/CodeViewer';
 import AIPanel from '@/components/AIPanel';
 import CommitTimeline from '@/components/CommitTimeline';
+import CalendarTimeline from '@/components/CalendarTimeline';
+import FileTree from '@/components/FileTree';
 
 interface Repository {
     id: number;
@@ -54,6 +56,8 @@ export default function ExplorePage({ params }: { params: Promise<{ id: string }
     const [loadingContent, setLoadingContent] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
     const [showAIPanel, setShowAIPanel] = useState(true);
+    const [sidebarView, setSidebarView] = useState<'list' | 'calendar'>('list');
+    const [calendarSelectedDate, setCalendarSelectedDate] = useState<Date | null>(null);
     const [error, setError] = useState<string | null>(null);
 
     const currentCommit = commits[currentIndex];
@@ -257,12 +261,50 @@ export default function ExplorePage({ params }: { params: Promise<{ id: string }
             <div className={styles.main}>
                 {/* Sidebar - Commit Timeline */}
                 <aside className={styles.sidebar}>
-                    <h3 className={styles.sidebarTitle}>Commit Timeline</h3>
-                    <CommitTimeline
-                        commits={commits}
-                        currentIndex={currentIndex}
-                        onSelect={goToCommit}
-                    />
+                    <div className={styles.sidebarHeader}>
+                        <h3 className={styles.sidebarTitle}>Timeline</h3>
+                        <div className={styles.viewToggle}>
+                            <button
+                                className={`${styles.toggleBtn} ${sidebarView === 'list' ? styles.toggleBtnActive : ''}`}
+                                onClick={() => setSidebarView('list')}
+                                title="List view"
+                            >
+                                <List size={16} />
+                            </button>
+                            <button
+                                className={`${styles.toggleBtn} ${sidebarView === 'calendar' ? styles.toggleBtnActive : ''}`}
+                                onClick={() => setSidebarView('calendar')}
+                                title="Calendar view"
+                            >
+                                <Calendar size={16} />
+                            </button>
+                        </div>
+                    </div>
+                    {sidebarView === 'list' ? (
+                        <CommitTimeline
+                            commits={commits}
+                            currentIndex={currentIndex}
+                            onSelect={goToCommit}
+                        />
+                    ) : (
+                        <div className={styles.calendarWrapper}>
+                            <CalendarTimeline
+                                commits={commits}
+                                selectedDate={calendarSelectedDate}
+                                onDayClick={(date, dayCommits) => {
+                                    setCalendarSelectedDate(date);
+                                    // Navigate to first commit of that day
+                                    if (dayCommits.length > 0) {
+                                        const firstCommit = dayCommits[0];
+                                        const index = commits.findIndex(c => c.id === firstCommit.id);
+                                        if (index >= 0) {
+                                            goToCommit(index);
+                                        }
+                                    }
+                                }}
+                            />
+                        </div>
+                    )}
                 </aside>
 
                 {/* Center - Code Viewer */}
@@ -295,18 +337,13 @@ export default function ExplorePage({ params }: { params: Promise<{ id: string }
                             </div>
                         ) : (
                             <>
-                                {/* File List */}
+                                {/* File Tree */}
                                 <div className={styles.fileList}>
-                                    {files.filter(f => f.shouldFetchContent || f.hasContent).slice(0, 30).map((file) => (
-                                        <button
-                                            key={file.path}
-                                            className={`${styles.fileItem} ${selectedFile?.path === file.path ? styles.fileItemActive : ''}`}
-                                            onClick={() => selectFile(file)}
-                                        >
-                                            <FileCode size={14} />
-                                            <span>{file.path.split('/').pop()}</span>
-                                        </button>
-                                    ))}
+                                    <FileTree
+                                        files={files}
+                                        selectedFile={selectedFile}
+                                        onSelectFile={selectFile}
+                                    />
                                 </div>
 
                                 {/* Code Display */}

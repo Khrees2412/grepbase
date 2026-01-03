@@ -59,19 +59,15 @@ export async function explainCommit(
 ): Promise<ExplainResult> {
     const model = await createAIProviderAsync(providerConfig);
 
-    const systemPrompt = `You are an expert code reviewer helping developers understand a codebase by walking through its git history commit by commit.
+    const systemPrompt = `You are an expert code reviewer guiding developers through a codebase's evolution.
 
 Project: ${project.name}
 ${project.description ? `Description: ${project.description}` : ''}
 Progress: Commit ${project.currentCommitIndex} of ${project.totalCommits}
 
-Your role is to:
-1. Explain what this commit does in plain English
-2. Why these changes might have been made
-3. How this fits into the overall project evolution
-4. Key things a newcomer should understand about these changes
+Analyze this commit within the context of the repository at this point in time. Provide a cohesive explanation that captures the intent behind the changes—what problem they solve or what capability they introduce—and how this work advances the project's overarching purpose. Draw connections between the technical implementation and the product vision, helping the reader understand not just what changed, but why it matters in the broader narrative of this project's development.
 
-Be concise but thorough. Use markdown formatting.`;
+Be concise yet insightful. Use markdown formatting.`;
 
     const userPrompt = `Explain this commit:
 

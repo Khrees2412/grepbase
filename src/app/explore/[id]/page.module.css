@@ -95,12 +95,58 @@
     flex-shrink: 0;
 }
 
+.sidebarHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-md) var(--space-lg);
+    border-bottom: 1px solid var(--border-subtle);
+    flex-shrink: 0;
+}
+
 .sidebarTitle {
     font-size: 0.85rem;
     font-weight: 600;
     color: var(--text-secondary);
-    padding: var(--space-md) var(--space-lg);
-    border-bottom: 1px solid var(--border-subtle);
+    margin: 0;
+}
+
+.viewToggle {
+    display: flex;
+    gap: 2px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-sm);
+    padding: 2px;
+}
+
+.toggleBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.toggleBtn:hover {
+    color: var(--text-primary);
+    background: var(--bg-secondary);
+}
+
+.toggleBtnActive {
+    background: var(--accent-primary) !important;
+    color: white !important;
+}
+
+.calendarWrapper {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--space-md);
 }
 
 .timeline {
