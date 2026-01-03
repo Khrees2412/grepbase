@@ -6,6 +6,7 @@
 import { cache } from './cache';
 import { CACHE_TTL, GITHUB } from '@/lib/constants';
 import { logger } from '@/lib/logger';
+import { getRequestContext } from '@cloudflare/next-on-pages';
 
 const githubLogger = logger.child({ service: 'github' });
 
@@ -33,6 +34,36 @@ export interface GitHubFile {
     sha: string;
 }
 
+// Helper to get headers with auth if available
+function getGitHubHeaders(accept = 'application/vnd.github.v3+json') {
+    const headers: Record<string, string> = {
+        'Accept': accept,
+        'User-Agent': 'Grepbase',
+    };
+
+    // Try process.env first (local dev / build time)
+    let token = process.env.GITHUB_TOKEN;
+
+    // Try Cloudflare env (runtime)
+    if (!token) {
+        try {
+            // @ts-ignore - Generic type handling
+            const { env } = getRequestContext<{ GITHUB_TOKEN?: string }>();
+            if (env && env.GITHUB_TOKEN) {
+                token = env.GITHUB_TOKEN;
+            }
+        } catch (e) {
+            // Ignore error if specific context is not available
+        }
+    }
+
+    if (token) {
+        headers['Authorization'] = `token ${token}`;
+    }
+
+    return headers;
+}
+
 /**
  * Fetch repository metadata
  */
@@ -47,10 +78,7 @@ export async function fetchRepository(owner: string, repo: string): Promise<GitH
     githubLogger.info({ owner, repo }, 'Fetching repository from GitHub API');
 
     const response = await fetch(`${GITHUB.API_BASE}/repos/${owner}/${repo}`, {
-        headers: {
-            'Accept': 'application/vnd.github.v3+json',
-            'User-Agent': 'Grepbase',
-        },
+        headers: getGitHubHeaders(),
     });
 
     if (!response.ok) {
@@ -87,10 +115,7 @@ export async function fetchRepository(owner: string, repo: string): Promise<GitH
 export async function fetchReadme(owner: string, repo: string): Promise<string | null> {
     try {
         const response = await fetch(`${GITHUB.API_BASE}/repos/${owner}/${repo}/readme`, {
-            headers: {
-                'Accept': 'application/vnd.github.v3.raw',
-                'User-Agent': 'Grepbase',
-            },
+            headers: getGitHubHeaders('application/vnd.github.v3.raw'),
         });
 
         if (!response.ok) {
@@ -124,10 +149,7 @@ export async function fetchCommitHistory(
         const response = await fetch(
             `${GITHUB.API_BASE}/repos/${owner}/${repo}/commits?per_page=${perPage}&page=${page}`,
             {
-                headers: {
-                    'Accept': 'application/vnd.github.v3+json',
-                    'User-Agent': 'Grepbase',
-                },
+                headers: getGitHubHeaders(),
             }
         );
 
@@ -181,10 +203,7 @@ export async function fetchFilesAtCommit(
     const response = await fetch(
         `${GITHUB.API_BASE}/repos/${owner}/${repo}/git/trees/${sha}?recursive=1`,
         {
-            headers: {
-                'Accept': 'application/vnd.github.v3+json',
-                'User-Agent': 'Grepbase',
-            },
+            headers: getGitHubHeaders(),
         }
     );
 
@@ -226,10 +245,7 @@ export async function fetchFileContent(
         const response = await fetch(
             `${GITHUB.API_BASE}/repos/${owner}/${repo}/contents/${path}?ref=${sha}`,
             {
-                headers: {
-                    'Accept': 'application/vnd.github.v3.raw',
-                    'User-Agent': 'Grepbase',
-                },
+                headers: getGitHubHeaders('application/vnd.github.v3.raw'),
             }
         );
 
@@ -258,10 +274,7 @@ export async function fetchCommitDiff(
         const response = await fetch(
             `${GITHUB.API_BASE}/repos/${owner}/${repo}/commits/${sha}`,
             {
-                headers: {
-                    'Accept': 'application/vnd.github.v3.diff',
-                    'User-Agent': 'Grepbase',
-                },
+                headers: getGitHubHeaders('application/vnd.github.v3.diff'),
             }
         );
 

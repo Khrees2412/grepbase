@@ -16,4 +16,5 @@ export type Database = ReturnType<typeof createDb>;
 // Type for Cloudflare environment with D1 binding
 export interface CloudflareEnv {
     DB: D1Database;
+    GITHUB_TOKEN?: string;
 }

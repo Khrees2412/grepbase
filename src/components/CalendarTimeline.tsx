@@ -203,7 +203,7 @@ export default function CalendarTimeline({
                     disabled={!canGoPrev}
                     aria-label="Previous month with commits"
                 >
-                    <ChevronLeft size={24} />
+                    <ChevronLeft size={18} />
                 </button>
 
                 <div className={styles.headerCenter}>
@@ -225,7 +225,7 @@ export default function CalendarTimeline({
                     disabled={!canGoNext}
                     aria-label="Next month with commits"
                 >
-                    <ChevronRight size={24} />
+                    <ChevronRight size={18} />
                 </button>
             </div>
 

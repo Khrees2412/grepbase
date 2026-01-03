@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Sparkles, Send, Loader2, AlertCircle, RefreshCw, X, Clock } from 'lucide-react';
+import { Sparkles, Send, Loader2, AlertCircle, RefreshCw, X, Clock, Square } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import styles from './AIPanel.module.css';
 import { getAISettings, getAutoExplainEnabled } from './SettingsModal';
@@ -168,6 +168,12 @@ export default function AIPanel({ repository, commit }: AIPanelProps) {
         setLoading(true);
         setError(null);
 
+        // Cancel previous request if any
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+
         try {
             const response = await fetch('/api/explain', {
                 method: 'POST',
@@ -184,6 +190,7 @@ export default function AIPanel({ repository, commit }: AIPanelProps) {
                         model: settings.config.model,
                     },
                 }),
+                signal: abortControllerRef.current.signal,
             });
 
             if (!response.ok) {
@@ -217,10 +224,28 @@ export default function AIPanel({ repository, commit }: AIPanelProps) {
 
             setStreaming(false);
         } catch (err) {
+            if (err instanceof Error && err.name === 'AbortError') {
+                // Request was cancelled
+                return;
+            }
             setError(err instanceof Error ? err.message : 'Something went wrong');
         } finally {
             setLoading(false);
+            setStreaming(false);
             inputRef.current?.focus();
+        }
+    }
+
+    function stopGeneration() {
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+            abortControllerRef.current = null;
+        }
+        setLoading(false);
+        setStreaming(false);
+        if (timerRef.current) {
+            clearInterval(timerRef.current);
+            timerRef.current = null;
         }
     }
 
@@ -335,13 +360,24 @@ export default function AIPanel({ repository, commit }: AIPanelProps) {
                         onChange={e => setInput(e.target.value)}
                         disabled={loading}
                     />
-                    <button
-                        type="submit"
-                        className={`btn btn-primary ${styles.sendBtn}`}
-                        disabled={loading || !input.trim()}
-                    >
-                        <Send size={16} />
-                    </button>
+                    {loading ? (
+                        <button
+                            type="button"
+                            className={`btn btn-error ${styles.stopBtn}`}
+                            onClick={stopGeneration}
+                            title="Stop generation"
+                        >
+                            <Square size={16} fill="currentColor" />
+                        </button>
+                    ) : (
+                        <button
+                            type="submit"
+                            className={`btn btn-primary ${styles.sendBtn}`}
+                            disabled={!input.trim()}
+                        >
+                            <Send size={16} />
+                        </button>
+                    )}
                 </form>
             </div>
         </div>
