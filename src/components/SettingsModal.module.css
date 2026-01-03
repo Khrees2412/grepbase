@@ -169,3 +169,34 @@
     padding: var(--space-lg);
     border-top: 1px solid var(--border-subtle);
 }
+
+/* Responsive */
+@media (max-width: 560px) {
+    .modal {
+        margin: var(--space-md);
+        max-height: calc(100vh - var(--space-xl));
+    }
+
+    .tabs {
+        flex-wrap: wrap;
+        gap: var(--space-sm);
+    }
+
+    .tab {
+        flex: 1 1 calc(50% - var(--space-sm)) !important;
+        min-width: calc(50% - var(--space-sm));
+        text-align: center;
+        font-size: 0.75rem;
+        padding: var(--space-sm) var(--space-xs);
+        white-space: nowrap;
+    }
+
+    .footer {
+        flex-direction: column-reverse;
+        gap: var(--space-sm);
+    }
+
+    .footer button {
+        width: 100%;
+    }
+}

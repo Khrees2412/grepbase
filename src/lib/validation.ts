@@ -3,18 +3,27 @@
  */
 import { z } from 'zod';
 
-// GitHub URL validation
-export const githubUrlSchema = z.string().url().refine(
-    (url) => {
-        try {
-            const parsed = new URL(url);
-            return parsed.hostname === 'github.com' && parsed.pathname.split('/').filter(Boolean).length >= 2;
-        } catch {
-            return false;
+// GitHub URL validation - normalizes and validates GitHub repo URLs
+export const githubUrlSchema = z.string()
+    .transform((input) => {
+        // Normalize: add https:// if missing
+        let url = input.trim();
+        if (!url.startsWith('http://') && !url.startsWith('https://')) {
+            url = `https://${url}`;
         }
-    },
-    { message: 'Must be a valid GitHub repository URL' }
-);
+        return url;
+    })
+    .refine(
+        (url) => {
+            try {
+                const parsed = new URL(url);
+                return parsed.hostname === 'github.com' && parsed.pathname.split('/').filter(Boolean).length >= 2;
+            } catch {
+                return false;
+            }
+        },
+        { message: 'Must be a valid GitHub repository URL' }
+    );
 
 // AI Provider Configuration
 export const aiProviderConfigSchema = z.object({

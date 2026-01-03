@@ -276,17 +276,25 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 export function getAISettings(): { provider: AIProviderType; config: ProviderSettings } | null {
     if (typeof window === 'undefined') return null;
 
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (!saved) return null;
-
-    try {
-        const parsed = JSON.parse(saved);
-        const provider = parsed.activeProvider || 'gemini';
-        return {
-            provider,
-            config: parsed[provider],
-        };
-    } catch {
-        return null;
+    // Try session storage first (what SettingsModal saves to)
+    const sessionData = secureStorage.getSessionItem<Partial<Record<AIProviderType, ProviderSettings>> & { activeProvider?: AIProviderType }>(STORAGE_KEY);
+    if (sessionData) {
+        const provider = sessionData.activeProvider || 'gemini';
+        const config = sessionData[provider];
+        if (config) {
+            return { provider, config };
+        }
     }
+
+    // Fall back to secure localStorage
+    const saved = secureStorage.getSecureItem<Partial<Record<AIProviderType, ProviderSettings>> & { activeProvider?: AIProviderType }>(STORAGE_KEY);
+    if (saved) {
+        const provider = saved.activeProvider || 'gemini';
+        const config = saved[provider];
+        if (config) {
+            return { provider, config };
+        }
+    }
+
+    return null;
 }

@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { BookOpen, Github, Sparkles, ArrowRight, Clock, Star, Loader2, Settings } from 'lucide-react';
 import styles from './page.module.css';
 import SettingsModal from '@/components/SettingsModal';
-import SetupFlow from '@/components/SetupFlow';
 
 interface Repository {
   id: number;
@@ -25,8 +24,6 @@ export default function Home() {
   const [isValid, setIsValid] = useState(false);
   const [repositories, setRepositories] = useState<Repository[]>([]);
   const [showSettings, setShowSettings] = useState(false);
-  const [showSetup, setShowSetup] = useState(false);
-  const [pendingUrl, setPendingUrl] = useState('');
   const router = useRouter();
 
   /**
@@ -116,14 +113,72 @@ export default function Home() {
     e.preventDefault();
     if (!isValid) return;
 
-    // Show the setup flow instead of directly navigating
-    setPendingUrl(url);
-    setShowSetup(true);
-  }
+    setError(null);
 
-  function handleSetupCancel() {
-    setShowSetup(false);
-    setPendingUrl('');
+    try {
+      // Fetch or find the repository
+      const res = await fetch('/api/repos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+      });
+
+      const data = await res.json() as {
+        error?: string;
+        repository?: Repository;
+        jobId?: string;
+        cached?: boolean;
+      };
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to fetch repository');
+      }
+
+      // If cached, navigate directly
+      if (data.cached && data.repository) {
+        router.push(`/explore/${data.repository.id}`);
+        return;
+      }
+
+      // If job started, poll for completion then navigate
+      if (data.jobId) {
+        // Poll for job completion
+        let attempts = 0;
+        const maxAttempts = 60; // 2 minutes max
+
+        const poll = async (): Promise<void> => {
+          attempts++;
+          const jobRes = await fetch(`/api/jobs/${data.jobId}`);
+          const jobData = await jobRes.json() as {
+            status: string;
+            repository?: Repository;
+            error?: string;
+          };
+
+          if (jobData.status === 'completed' && jobData.repository) {
+            router.push(`/explore/${jobData.repository.id}`);
+            return;
+          } else if (jobData.status === 'failed') {
+            throw new Error(jobData.error || 'Failed to fetch repository');
+          } else if (attempts < maxAttempts) {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            return poll();
+          } else {
+            throw new Error('Repository fetch timed out');
+          }
+        };
+
+        await poll();
+        return;
+      }
+
+      // Fallback: direct repository response
+      if (data.repository) {
+        router.push(`/explore/${data.repository.id}`);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch repository');
+    }
   }
 
   return (
@@ -261,14 +316,6 @@ export default function Home() {
         isOpen={showSettings}
         onClose={() => setShowSettings(false)}
       />
-
-      {/* Setup Flow Modal */}
-      {showSetup && (
-        <SetupFlow
-          repoUrl={pendingUrl}
-          onCancel={handleSetupCancel}
-        />
-      )}
     </main>
   );
 }

@@ -120,7 +120,7 @@ export async function GET(
             });
         }
 
-        // Save file metadata to database (without content)
+        // Save file metadata to database (without content) in batches
         const dbFiles = filesToSave.map(f => ({
             commitId: f.commitId,
             path: f.path,
@@ -130,7 +130,11 @@ export async function GET(
         }));
 
         if (dbFiles.length > 0) {
-            await db.insert(files).values(dbFiles);
+            const BATCH_SIZE = 10;
+            for (let i = 0; i < dbFiles.length; i += BATCH_SIZE) {
+                const batch = dbFiles.slice(i, i + BATCH_SIZE);
+                await db.insert(files).values(batch);
+            }
         }
 
         // Return file list with metadata only

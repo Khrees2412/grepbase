@@ -98,19 +98,64 @@ export async function POST(request: NextRequest) {
             .limit(1);
 
         if (existing.length > 0) {
-            const duration = Date.now() - startTime;
+            const existingRepo = existing[0];
 
-            // Track cached repo request
-            await analytics.trackRepoIngest({
-                owner,
-                repo: repoName,
-                commitsCount: 0,
-                cached: true,
-                duration,
+            // Check if commits exist
+            const { commits } = await import('@/db');
+            const { sql } = await import('drizzle-orm');
+            const commitCount = await db
+                .select({ count: sql<number>`count(*)` })
+                .from(commits)
+                .where(eq(commits.repoId, existingRepo.id));
+
+            const hasCommits = Number(commitCount[0]?.count || 0) > 0;
+
+            if (hasCommits) {
+                // Repo fully cached with commits
+                const duration = Date.now() - startTime;
+                await analytics.trackRepoIngest({
+                    owner,
+                    repo: repoName,
+                    commitsCount: Number(commitCount[0]?.count),
+                    cached: true,
+                    duration,
+                });
+
+                requestLogger.info({ owner, repo: repoName, duration }, 'Repository already cached with commits');
+                return NextResponse.json({ repository: existingRepo, cached: true });
+            }
+
+            // Repo exists but has no commits - trigger background fetch
+            requestLogger.info({ owner, repo: repoName }, 'Repository cached but missing commits, fetching...');
+
+            const jobId = crypto.randomUUID();
+            const now = new Date();
+
+            await db.insert(ingestJobs).values({
+                jobId,
+                url: sanitizedUrl,
+                status: 'pending',
+                progress: 0,
+                createdAt: now,
+                updatedAt: now,
             });
 
-            requestLogger.info({ owner, repo: repoName, duration }, 'Repository already cached');
-            return NextResponse.json({ repository: existing[0], cached: true });
+            const { ctx } = getRequestContext();
+            ctx.waitUntil(
+                processRepoIngestion({
+                    jobId,
+                    url: sanitizedUrl,
+                    clientId,
+                    db,
+                })
+            );
+
+            return NextResponse.json({
+                jobId,
+                status: 'processing',
+                message: 'Fetching commits for existing repository',
+                repository: existingRepo,
+            }, { status: 202 });
         }
 
         // Create job for background processing
@@ -134,6 +179,7 @@ export async function POST(request: NextRequest) {
                 jobId,
                 url: sanitizedUrl,
                 clientId,
+                db,  // Pass db since getRequestContext() isn't available in waitUntil()
             })
         );
 
@@ -156,9 +202,12 @@ export async function POST(request: NextRequest) {
             clientId: rateLimiter.getClientId(request),
         });
 
+        // Log full error server-side but don't expose SQL/internal details to client
         requestLogger.error({ error, errorMessage: error instanceof Error ? error.message : 'Unknown error', duration }, 'Error creating repository');
+
+        // Return sanitized error message
         return NextResponse.json(
-            { error: error instanceof Error ? error.message : 'Failed to fetch repository' },
+            { error: 'Failed to fetch repository. Please try again later.' },
             { status: 500 }
         );
     }

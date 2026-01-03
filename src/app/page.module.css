@@ -31,8 +31,8 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 60vh;
-  padding: var(--space-2xl) var(--space-lg);
+  min-height: 45vh;
+  padding: var(--space-xl) var(--space-lg);
 }
 
 .heroContent {
@@ -189,7 +189,7 @@
 /* Recent Section */
 .recentSection {
   max-width: 1000px;
-  margin: var(--space-2xl) auto 0;
+  margin: var(--space-lg) auto 0;
   padding: 0 var(--space-lg);
 }
 
@@ -202,8 +202,9 @@
 
 .repoGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: var(--space-md);
+  justify-content: center;
 }
 
 .repoCard {
