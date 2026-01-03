@@ -341,13 +341,13 @@ export function getAutoExplainEnabled(): boolean {
     if (typeof window === 'undefined') return false;
 
     // Try session first
-    const sessionData = secureStorage.getSessionItem<any>(STORAGE_KEY);
+    const sessionData = secureStorage.getSessionItem<{ autoExplain?: boolean }>(STORAGE_KEY);
     if (sessionData && typeof sessionData.autoExplain === 'boolean') {
         return sessionData.autoExplain;
     }
 
     // Fallback to local
-    const saved = secureStorage.getSecureItem<any>(STORAGE_KEY);
+    const saved = secureStorage.getSecureItem<{ autoExplain?: boolean }>(STORAGE_KEY);
     if (saved && typeof saved.autoExplain === 'boolean') {
         return saved.autoExplain;
     }

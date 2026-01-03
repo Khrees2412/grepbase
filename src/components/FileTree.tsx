@@ -29,7 +29,7 @@ interface TreeNode {
 }
 
 // Map file extensions to icon components and colors
-const getFileIcon = (filename: string, language: string) => {
+const getFileIcon = (filename: string) => {
     const ext = filename.split('.').pop()?.toLowerCase() || '';
 
     // Language-based icons
@@ -93,8 +93,6 @@ function buildTree(files: FileData[]): TreeNode[] {
 
     // Sort files: folders first, then alphabetically
     const sortedFiles = [...files].sort((a, b) => {
-        const partsA = a.path.split('/');
-        const partsB = b.path.split('/');
         return a.path.localeCompare(b.path);
     });
 
@@ -163,7 +161,7 @@ function TreeNodeComponent({
 }: TreeNodeComponentProps) {
     const isExpanded = expandedFolders.has(node.path);
     const isSelected = selectedPath === node.path;
-    const { icon: FileIcon, color } = getFileIcon(node.name, node.language || '');
+    const { icon: FileIcon, color } = getFileIcon(node.name);
 
     const handleClick = () => {
         if (node.isFolder) {

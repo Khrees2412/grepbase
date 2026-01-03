@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Sparkles, Send, Loader2, AlertCircle, RefreshCw, X, Clock, Square } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import styles from './AIPanel.module.css';
@@ -40,28 +40,7 @@ export default function AIPanel({ repository, commit }: AIPanelProps) {
     const abortControllerRef = useRef<AbortController | null>(null);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-    // Reset messages when commit changes
-    useEffect(() => {
-        // Cancel any in-flight request
-        if (abortControllerRef.current) {
-            abortControllerRef.current.abort();
-        }
-        setMessages([]);
-        setError(null);
-        setElapsedTime(0);
-
-        // Auto-explain if enabled
-        if (getAutoExplainEnabled()) {
-            explainCommit();
-        }
-    }, [commit.sha]);
-
-    // Scroll to bottom on new messages
-    useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages]);
-
-    async function explainCommit() {
+    const explainCommit = useCallback(async () => {
         const settings = getAISettings();
         if (!settings) {
             setError('Please configure your AI settings first (click the Settings button)');
@@ -150,7 +129,28 @@ export default function AIPanel({ repository, commit }: AIPanelProps) {
                 timerRef.current = null;
             }
         }
-    }
+    }, [commit.sha, repository.id]);
+
+    // Reset messages when commit changes
+    useEffect(() => {
+        // Cancel any in-flight request
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+        }
+        setMessages([]);
+        setError(null);
+        setElapsedTime(0);
+
+        // Auto-explain if enabled
+        if (getAutoExplainEnabled()) {
+            explainCommit();
+        }
+    }, [commit.sha, explainCommit]);
+
+    // Scroll to bottom on new messages
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messages]);
 
     async function askQuestion(e: React.FormEvent) {
         e.preventDefault();

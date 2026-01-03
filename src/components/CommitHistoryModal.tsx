@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { X, Calendar, Clock, GitCommit } from 'lucide-react';
 import styles from './CommitHistoryModal.module.css';
 import CalendarTimeline from './CalendarTimeline';
@@ -34,14 +34,9 @@ export default function CommitHistoryModal({
     const [filteredCommits, setFilteredCommits] = useState<Commit[]>(commits);
 
     // Reset filter when closed
-    useEffect(() => {
-        if (!isOpen) {
-            setSelectedDate(null);
-            setFilteredCommits(commits);
-        } else {
-            setFilteredCommits(commits);
-        }
-    }, [isOpen, commits]);
+    // Reset filter when closed - handled by unmounting in parent now
+    // or we can initialize state based on props if needed, but since it remounts,
+    // useState(commits) is enough.
 
     // Handle day click - filter the list on the right
     const handleDayClick = (date: Date, dayCommits: Commit[]) => {

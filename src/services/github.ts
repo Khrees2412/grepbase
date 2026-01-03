@@ -47,12 +47,12 @@ function getGitHubHeaders(accept = 'application/vnd.github.v3+json') {
     // Try Cloudflare env (runtime)
     if (!token) {
         try {
-            // @ts-ignore - Generic type handling
+            // Generic type handling
             const { env } = getRequestContext<{ GITHUB_TOKEN?: string }>();
             if (env && env.GITHUB_TOKEN) {
                 token = env.GITHUB_TOKEN;
             }
-        } catch (e) {
+        } catch {
             // Ignore error if specific context is not available
         }
     }

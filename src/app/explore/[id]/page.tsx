@@ -6,7 +6,7 @@ import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import {
     BookOpen, ChevronLeft, ChevronRight, Home, Settings,
-    Loader2, MessageSquare, GitCommit, User, Calendar, History, Focus, Maximize2, Minimize2, ChevronDown
+    Loader2, MessageSquare, GitCommit, User, Calendar, Maximize2, Minimize2, ChevronDown
 } from 'lucide-react';
 import { Panel, Group, Separator } from 'react-resizable-panels';
 import styles from './page.module.css';
@@ -390,13 +390,15 @@ export default function ExplorePage({ params }: { params: Promise<{ id: string }
             </div>
 
             {/* History Modal */}
-            <CommitHistoryModal
-                isOpen={showHistoryModal}
-                onClose={() => setShowHistoryModal(false)}
-                commits={commits}
-                currentIndex={currentIndex}
-                onSelectCommit={goToCommit}
-            />
+            {showHistoryModal && (
+                <CommitHistoryModal
+                    isOpen={showHistoryModal}
+                    onClose={() => setShowHistoryModal(false)}
+                    commits={commits}
+                    currentIndex={currentIndex}
+                    onSelectCommit={goToCommit}
+                />
+            )}
 
             {/* Settings Modal */}
             <SettingsModal
