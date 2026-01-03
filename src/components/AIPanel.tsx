@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Sparkles, Send, Loader2, AlertCircle, RefreshCw, X, Clock } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import styles from './AIPanel.module.css';
-import { getAISettings } from './SettingsModal';
+import { getAISettings, getAutoExplainEnabled } from './SettingsModal';
 
 interface AIPanelProps {
     repository: {
@@ -49,6 +49,11 @@ export default function AIPanel({ repository, commit }: AIPanelProps) {
         setMessages([]);
         setError(null);
         setElapsedTime(0);
+
+        // Auto-explain if enabled
+        if (getAutoExplainEnabled()) {
+            explainCommit();
+        }
     }, [commit.sha]);
 
     // Scroll to bottom on new messages

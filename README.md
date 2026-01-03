@@ -1,8 +1,8 @@
 # Grepbase
 
-Grepbase is a beautiful, AI-powered code visualization tool designed to help developers understand codebases through a "book-like" commit history view. It ingests GitHub repositories, parses their history, and uses advanced AI agents to explain code changes and project evolution commit-by-commit.
+Grepbase is an AI-powered code visualization tool designed to help developers understand codebases through a commit history view. It ingests GitHub repositories, parses their history, and uses advanced AI agents to explain code changes and project evolution commit-by-commit.
 
-Designed for ease of use and deep understanding, Grepbase supports both cloud-based AI providers (Google Gemini, OpenAI, Anthropic) and local LLMs (Ollama, LMStudio) via a Bring-Your-Own-Key (BYOK) model.
+Designed for ease of use and deep understanding, Grepbase supports both cloud-based AI providers (Google Gemini, OpenAI, Anthropic) via a Bring-Your-Own-Key (BYOK) model and also local LLMs (Ollama, LMStudio).
 
 ## Features
 

@@ -43,8 +43,62 @@
 
 .headerCenter {
     flex: 1;
-    max-width: 400px;
+    display: flex;
+    justify-content: center;
     margin: 0 var(--space-lg);
+}
+
+.chapterTrigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-md);
+    padding: 6px 12px;
+    background: var(--bg-tertiary);
+    /* Fallback */
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    min-width: 280px;
+    max-width: 480px;
+    text-align: left;
+}
+
+.chapterTrigger:hover {
+    border-color: var(--accent-primary);
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.chapterInfo {
+    display: flex;
+    flex-direction: column;
+    gap: 0px;
+    overflow: hidden;
+    flex: 1;
+}
+
+.chapterLabel {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.chapterTitle {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.chapterChevron {
+    color: var(--text-muted);
+    opacity: 0.7;
 }
 
 .progress {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Key, Check, AlertCircle, Loader2 } from 'lucide-react';
+import { X, Key, Check, AlertCircle, Loader2, Zap } from 'lucide-react';
 import styles from './SettingsModal.module.css';
 import { type AIProviderType, PROVIDER_NAMES, getAvailableModels } from '@/services/ai-providers';
 import { secureStorage } from '@/lib/secure-storage';
@@ -31,25 +31,32 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     const [testing, setTesting] = useState(false);
     const [testResult, setTestResult] = useState<'success' | 'error' | null>(null);
     const [testError, setTestError] = useState<string | null>(null);
+    const [autoExplain, setAutoExplain] = useState(false);
 
     // Load settings from secure storage on mount
     useEffect(() => {
         // Try session storage first (more secure for API keys)
-        const sessionData = secureStorage.getSessionItem<Partial<Record<AIProviderType, ProviderSettings>> & { activeProvider?: AIProviderType }>(STORAGE_KEY);
+        const sessionData = secureStorage.getSessionItem<Partial<Record<AIProviderType, ProviderSettings>> & { activeProvider?: AIProviderType; autoExplain?: boolean }>(STORAGE_KEY);
         if (sessionData) {
             setSettings(prev => ({ ...prev, ...sessionData }));
             if (sessionData.activeProvider) {
                 setActiveProvider(sessionData.activeProvider);
             }
+            if (sessionData.autoExplain) {
+                setAutoExplain(sessionData.autoExplain);
+            }
             return;
         }
 
         // Fall back to secure localStorage
-        const saved = secureStorage.getSecureItem<Partial<Record<AIProviderType, ProviderSettings>> & { activeProvider?: AIProviderType }>(STORAGE_KEY);
+        const saved = secureStorage.getSecureItem<Partial<Record<AIProviderType, ProviderSettings>> & { activeProvider?: AIProviderType; autoExplain?: boolean }>(STORAGE_KEY);
         if (saved) {
             setSettings(prev => ({ ...prev, ...saved }));
             if (saved.activeProvider) {
                 setActiveProvider(saved.activeProvider);
+            }
+            if (saved.autoExplain) {
+                setAutoExplain(saved.autoExplain);
             }
         }
     }, []);
@@ -59,6 +66,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         const data = {
             ...settings,
             activeProvider,
+            autoExplain,
         };
 
         // Save to session storage (cleared on tab close) for better security
@@ -139,7 +147,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         <div className={styles.overlay} onClick={onClose}>
             <div className={styles.modal} onClick={e => e.stopPropagation()}>
                 <div className={styles.header}>
-                    <h2>API Settings</h2>
+                    <h2>Settings</h2>
                     <button className={styles.closeBtn} onClick={onClose}>
                         <X size={20} />
                     </button>
@@ -147,8 +155,12 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
                 <div className={styles.content}>
                     <p className={styles.description}>
-                        Configure your AI provider. Keys are stored locally in your browser.
+                        Configure your AI provider and preferences. settings are stored locally in your browser.
                     </p>
+
+                    <div className={styles.sectionHeader}>
+                        <h3>AI Provider</h3>
+                    </div>
 
                     {/* Provider Tabs */}
                     <div className={styles.tabs}>
@@ -257,6 +269,32 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                             )}
                         </div>
                     </div>
+
+                    <div className={styles.sectionHeader} style={{ marginTop: '24px' }}>
+                        <h3>Preferences</h3>
+                    </div>
+
+                    <div className={styles.form}>
+                        <div className={styles.preferenceRow}>
+                            <div className={styles.preferenceInfo}>
+                                <div className={styles.preferenceTitle}>
+                                    <Zap size={16} />
+                                    <span>Auto-explain commits</span>
+                                </div>
+                                <p className={styles.preferenceDesc}>
+                                    Automatically generate explanations when selecting a commit
+                                </p>
+                            </div>
+                            <label className={styles.toggle}>
+                                <input
+                                    type="checkbox"
+                                    checked={autoExplain}
+                                    onChange={e => setAutoExplain(e.target.checked)}
+                                />
+                                <span className={styles.toggleSlider}></span>
+                            </label>
+                        </div>
+                    </div>
                 </div>
 
                 <div className={styles.footer}>
@@ -297,4 +335,22 @@ export function getAISettings(): { provider: AIProviderType; config: ProviderSet
     }
 
     return null;
+}
+
+export function getAutoExplainEnabled(): boolean {
+    if (typeof window === 'undefined') return false;
+
+    // Try session first
+    const sessionData = secureStorage.getSessionItem<any>(STORAGE_KEY);
+    if (sessionData && typeof sessionData.autoExplain === 'boolean') {
+        return sessionData.autoExplain;
+    }
+
+    // Fallback to local
+    const saved = secureStorage.getSecureItem<any>(STORAGE_KEY);
+    if (saved && typeof saved.autoExplain === 'boolean') {
+        return saved.autoExplain;
+    }
+
+    return false;
 }

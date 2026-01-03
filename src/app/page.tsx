@@ -18,7 +18,7 @@ interface Repository {
 
 export default function Home() {
   const [url, setUrl] = useState('');
-  const [loading] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [isValid, setIsValid] = useState(false);
@@ -114,6 +114,7 @@ export default function Home() {
     if (!isValid) return;
 
     setError(null);
+    setLoading(true);
 
     try {
       // Fetch or find the repository
@@ -178,6 +179,7 @@ export default function Home() {
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch repository');
+      setLoading(false);
     }
   }
 

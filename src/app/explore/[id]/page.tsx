@@ -6,7 +6,7 @@ import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import {
     BookOpen, ChevronLeft, ChevronRight, Home, Settings,
-    Loader2, MessageSquare, GitCommit, User, Calendar, History, Focus, Maximize2, Minimize2
+    Loader2, MessageSquare, GitCommit, User, Calendar, History, Focus, Maximize2, Minimize2, ChevronDown
 } from 'lucide-react';
 import { Panel, Group, Separator } from 'react-resizable-panels';
 import styles from './page.module.css';
@@ -232,14 +232,20 @@ export default function ExplorePage({ params }: { params: Promise<{ id: string }
                 </div>
 
                 <div className={styles.headerCenter}>
-                    {/* History Button (Main Navigation) */}
+                    {/* Chapter / Commit Selector */}
                     <button
-                        className={styles.historyBtn}
+                        className={styles.chapterTrigger}
                         onClick={() => setShowHistoryModal(true)}
                     >
-                        <History size={16} />
-                        <span>Chapter {currentIndex + 1}: {currentCommit.message.split('\n')[0].substring(0, 40)}...</span>
-                        <span className={styles.historyBadge}>{commits.length}</span>
+                        <div className={styles.chapterInfo}>
+                            <span className={styles.chapterLabel}>
+                                Chapter {currentIndex + 1} of {commits.length}
+                            </span>
+                            <span className={styles.chapterTitle}>
+                                {currentCommit.message.split('\n')[0]}
+                            </span>
+                        </div>
+                        <ChevronDown size={16} className={styles.chapterChevron} />
                     </button>
                 </div>
 
