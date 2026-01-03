@@ -6,15 +6,15 @@ import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import {
     BookOpen, ChevronLeft, ChevronRight, Home, Settings,
-    Loader2, MessageSquare, GitCommit, User, Calendar, List, FileCode
+    Loader2, MessageSquare, GitCommit, User, Calendar, History, Focus, Maximize2, Minimize2
 } from 'lucide-react';
+import { Panel, Group, Separator } from 'react-resizable-panels';
 import styles from './page.module.css';
 import SettingsModal from '@/components/SettingsModal';
 import CodeViewer from '@/components/CodeViewer';
 import AIPanel from '@/components/AIPanel';
-import CommitTimeline from '@/components/CommitTimeline';
-import CalendarTimeline from '@/components/CalendarTimeline';
 import FileTree from '@/components/FileTree';
+import CommitHistoryModal from '@/components/CommitHistoryModal';
 
 interface Repository {
     id: number;
@@ -56,8 +56,8 @@ export default function ExplorePage({ params }: { params: Promise<{ id: string }
     const [loadingContent, setLoadingContent] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
     const [showAIPanel, setShowAIPanel] = useState(true);
-    const [sidebarView, setSidebarView] = useState<'list' | 'calendar'>('list');
-    const [calendarSelectedDate, setCalendarSelectedDate] = useState<Date | null>(null);
+    const [showHistoryModal, setShowHistoryModal] = useState(false);
+    const [focusMode, setFocusMode] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     const currentCommit = commits[currentIndex];
@@ -173,9 +173,11 @@ export default function ExplorePage({ params }: { params: Promise<{ id: string }
     // Keyboard navigation
     useEffect(() => {
         function handleKeyDown(e: KeyboardEvent) {
-            if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+            if (showSettings || showHistoryModal) return;
+
+            if (e.key === 'ArrowRight' && e.metaKey) { // Cmd+Right for next commit
                 goNext();
-            } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+            } else if (e.key === 'ArrowLeft' && e.metaKey) { // Cmd+Left for prev commit
                 goPrev();
             }
         }
@@ -218,7 +220,7 @@ export default function ExplorePage({ params }: { params: Promise<{ id: string }
     return (
         <div className={styles.container}>
             {/* Header */}
-            <header className={styles.header}>
+            <header className={`${styles.header} ${focusMode ? styles.headerCompact : ''}`}>
                 <div className={styles.headerLeft}>
                     <button className="btn btn-ghost" onClick={() => router.push('/')}>
                         <Home size={18} />
@@ -230,182 +232,165 @@ export default function ExplorePage({ params }: { params: Promise<{ id: string }
                 </div>
 
                 <div className={styles.headerCenter}>
-                    <div className={styles.progress}>
-                        <span className={styles.progressText}>
-                            Chapter {currentIndex + 1} of {commits.length}
-                        </span>
-                        <div className={styles.progressBar}>
-                            <div
-                                className={styles.progressFill}
-                                style={{ width: `${((currentIndex + 1) / commits.length) * 100}%` }}
-                            />
-                        </div>
-                    </div>
+                    {/* History Button (Main Navigation) */}
+                    <button
+                        className={styles.historyBtn}
+                        onClick={() => setShowHistoryModal(true)}
+                    >
+                        <History size={16} />
+                        <span>Chapter {currentIndex + 1}: {currentCommit.message.split('\n')[0].substring(0, 40)}...</span>
+                        <span className={styles.historyBadge}>{commits.length}</span>
+                    </button>
                 </div>
 
                 <div className={styles.headerRight}>
                     <button
-                        className={`btn btn-ghost ${showAIPanel ? styles.active : ''}`}
-                        onClick={() => setShowAIPanel(!showAIPanel)}
+                        className={`btn btn-ghost ${focusMode ? styles.active : ''}`}
+                        onClick={() => setFocusMode(!focusMode)}
+                        title="Focus Mode"
                     >
-                        <MessageSquare size={18} />
-                        AI
+                        {focusMode ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
                     </button>
+
+                    {!focusMode && (
+                        <button
+                            className={`btn btn-ghost ${showAIPanel ? styles.active : ''}`}
+                            onClick={() => setShowAIPanel(!showAIPanel)}
+                        >
+                            <MessageSquare size={18} />
+                            AI
+                        </button>
+                    )}
                     <button className="btn btn-ghost" onClick={() => setShowSettings(true)}>
                         <Settings size={18} />
                     </button>
                 </div>
             </header>
 
-            {/* Main Content */}
+            {/* Main Content (Resizable Panels) */}
             <div className={styles.main}>
-                {/* Sidebar - Commit Timeline */}
-                <aside className={styles.sidebar}>
-                    <div className={styles.sidebarHeader}>
-                        <h3 className={styles.sidebarTitle}>Timeline</h3>
-                        <div className={styles.viewToggle}>
-                            <button
-                                className={`${styles.toggleBtn} ${sidebarView === 'list' ? styles.toggleBtnActive : ''}`}
-                                onClick={() => setSidebarView('list')}
-                                title="List view"
-                            >
-                                <List size={16} />
-                            </button>
-                            <button
-                                className={`${styles.toggleBtn} ${sidebarView === 'calendar' ? styles.toggleBtnActive : ''}`}
-                                onClick={() => setSidebarView('calendar')}
-                                title="Calendar view"
-                            >
-                                <Calendar size={16} />
-                            </button>
-                        </div>
-                    </div>
-                    {sidebarView === 'list' ? (
-                        <CommitTimeline
-                            commits={commits}
-                            currentIndex={currentIndex}
-                            onSelect={goToCommit}
-                        />
-                    ) : (
-                        <div className={styles.calendarWrapper}>
-                            <CalendarTimeline
-                                commits={commits}
-                                selectedDate={calendarSelectedDate}
-                                onDayClick={(date, dayCommits) => {
-                                    setCalendarSelectedDate(date);
-                                    // Navigate to first commit of that day
-                                    if (dayCommits.length > 0) {
-                                        const firstCommit = dayCommits[0];
-                                        const index = commits.findIndex(c => c.id === firstCommit.id);
-                                        if (index >= 0) {
-                                            goToCommit(index);
-                                        }
-                                    }
-                                }}
-                            />
-                        </div>
-                    )}
-                </aside>
-
-                {/* Center - Code Viewer */}
-                <main className={styles.content}>
-                    {/* Commit Info */}
-                    <div className={styles.commitInfo}>
-                        <div className={styles.commitHeader}>
-                            <GitCommit size={18} />
-                            <code className={styles.commitSha}>{currentCommit.sha.substring(0, 7)}</code>
-                        </div>
-                        <h2 className={styles.commitMessage}>{currentCommit.message.split('\n')[0]}</h2>
-                        <div className={styles.commitMeta}>
-                            <span>
-                                <User size={14} />
-                                {currentCommit.authorName || 'Unknown'}
-                            </span>
-                            <span>
-                                <Calendar size={14} />
-                                {new Date(currentCommit.date).toLocaleDateString()}
-                            </span>
-                        </div>
-                    </div>
-
-                    {/* File Tree & Code */}
-                    <div className={styles.codeArea}>
-                        {loadingFiles ? (
-                            <div className={styles.loadingFiles}>
-                                <Loader2 size={24} className={styles.spinner} />
-                                <p>Loading files...</p>
+                <Group orientation="horizontal" className={styles.group}>
+                    {/* Left Panel: Files */}
+                    {/* Left Panel: Files */}
+                    {!focusMode && (
+                        <Panel defaultSize="20" minSize="15" maxSize="30" className={styles.panel} id="files">
+                            <div className={styles.panelHeader}>
+                                <h3 className={styles.panelTitle}>Files</h3>
                             </div>
-                        ) : (
-                            <>
-                                {/* File Tree */}
-                                <div className={styles.fileList}>
+                            <div className={styles.fileList}>
+                                {loadingFiles ? (
+                                    <div className={styles.loadingFiles}>
+                                        <Loader2 size={24} className={styles.spinner} />
+                                    </div>
+                                ) : (
                                     <FileTree
                                         files={files}
                                         selectedFile={selectedFile}
                                         onSelectFile={selectFile}
                                     />
+                                )}
+                            </div>
+                        </Panel>
+                    )}
+                    {!focusMode && <Separator className={styles.resizeHandle} />}
+
+                    {/* Center Panel: Code */}
+                    <Panel defaultSize="60" minSize="30" className={styles.panel} id="code">
+                        {/* Commit Info (Compact) */}
+                        <div className={styles.commitInfo}>
+                            <div className={styles.commitMeta}>
+                                <div className={styles.commitSha}>
+                                    <GitCommit size={14} />
+                                    <code>{currentCommit.sha.substring(0, 7)}</code>
                                 </div>
+                                <span className={styles.commitAuthor}>
+                                    <User size={14} />
+                                    {currentCommit.authorName || 'Unknown'}
+                                </span>
+                                <span className={styles.commitDate}>
+                                    <Calendar size={14} />
+                                    {new Date(currentCommit.date).toLocaleDateString()}
+                                </span>
+                            </div>
+                        </div>
 
-                                {/* Code Display */}
-                                <div className={styles.codeDisplay}>
-                                    {loadingContent ? (
-                                        <div className={styles.loadingFiles}>
-                                            <Loader2 size={24} className={styles.spinner} />
-                                            <p>Loading content...</p>
+                        <div className={styles.codeArea}>
+                            <div className={styles.codeDisplay}>
+                                {loadingContent ? (
+                                    <div className={styles.loadingFiles}>
+                                        <Loader2 size={24} className={styles.spinner} />
+                                        <p>Loading content...</p>
+                                    </div>
+                                ) : selectedFile?.content ? (
+                                    <CodeViewer
+                                        code={selectedFile.content}
+                                        language={selectedFile.language}
+                                        filename={selectedFile.path}
+                                    />
+                                ) : (
+                                    <div className={styles.noFile}>
+                                        <div className={styles.emptyStateIcon}>
+                                            <BookOpen size={48} />
                                         </div>
-                                    ) : selectedFile?.content ? (
-                                        <CodeViewer
-                                            code={selectedFile.content}
-                                            language={selectedFile.language}
-                                            filename={selectedFile.path}
-                                        />
-                                    ) : (
-                                        <div className={styles.noFile}>
-                                            <FileCode size={48} />
-                                            <p>Select a file to view its contents</p>
-                                        </div>
-                                    )}
-                                </div>
-                            </>
-                        )}
-                    </div>
+                                        <h3>Select a file to start reading</h3>
+                                        <p>Browse the file tree on the left to view code.</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
 
-                    {/* Navigation */}
-                    <div className={styles.navigation}>
-                        <button
-                            className="btn btn-secondary"
-                            onClick={goPrev}
-                            disabled={currentIndex === 0}
-                        >
-                            <ChevronLeft size={18} />
-                            Previous
-                        </button>
-                        <span className={styles.navInfo}>
-                            Use arrow keys to navigate
-                        </span>
-                        <button
-                            className="btn btn-primary"
-                            onClick={goNext}
-                            disabled={currentIndex === commits.length - 1}
-                        >
-                            Next
-                            <ChevronRight size={18} />
-                        </button>
-                    </div>
-                </main>
+                        {/* Bottom Navigation */}
+                        <div className={styles.navigation}>
+                            <button
+                                className="btn btn-secondary"
+                                onClick={goPrev}
+                                disabled={currentIndex === 0}
+                            >
+                                <ChevronLeft size={18} />
+                                Previous
+                            </button>
+                            <span className={styles.navInfo}>
+                                {currentIndex + 1} / {commits.length}
+                            </span>
+                            <button
+                                className="btn btn-primary"
+                                onClick={goNext}
+                                disabled={currentIndex === commits.length - 1}
+                            >
+                                Next
+                                <ChevronRight size={18} />
+                            </button>
+                        </div>
+                    </Panel>
 
-                {/* Right Panel - AI */}
-                {showAIPanel && (
-                    <aside className={styles.aiPanel}>
-                        <AIPanel
-                            repository={repository}
-                            commit={currentCommit}
-                            totalCommits={commits.length}
-                            currentIndex={currentIndex}
-                        />
-                    </aside>
-                )}
+                    {/* Right Panel: AI */}
+                    {!focusMode && showAIPanel && <Separator className={styles.resizeHandle} />}
+                    {!focusMode && showAIPanel && (
+                        <Panel defaultSize="20" minSize="20" maxSize="40" className={styles.panel} id="ai">
+                            <div className={styles.panelHeader}>
+                                <h3 className={styles.panelTitle}>AI Analysis</h3>
+                            </div>
+                            <div className={styles.aiPanelWrapper}>
+                                <AIPanel
+                                    repository={repository}
+                                    commit={currentCommit}
+                                    totalCommits={commits.length}
+                                    currentIndex={currentIndex}
+                                />
+                            </div>
+                        </Panel>
+                    )}
+                </Group>
             </div>
+
+            {/* History Modal */}
+            <CommitHistoryModal
+                isOpen={showHistoryModal}
+                onClose={() => setShowHistoryModal(false)}
+                commits={commits}
+                currentIndex={currentIndex}
+                onSelectCommit={goToCommit}
+            />
 
             {/* Settings Modal */}
             <SettingsModal

@@ -18,6 +18,7 @@ interface CalendarTimelineProps {
     onDayClick: (date: Date, dayCommits: Commit[]) => void;
     selectedDate: Date | null;
     loading?: boolean;
+    className?: string; // Add optional className
 }
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -30,7 +31,8 @@ export default function CalendarTimeline({
     commits,
     onDayClick,
     selectedDate,
-    loading = false
+    loading = false,
+    className
 }: CalendarTimelineProps) {
     // Group commits by date
     const commitsByDate = useMemo(() => {
@@ -192,7 +194,7 @@ export default function CalendarTimeline({
     }
 
     return (
-        <div className={styles.calendar}>
+        <div className={`${styles.calendar} ${className || ''}`}>
             {/* Header */}
             <div className={styles.header}>
                 <button
