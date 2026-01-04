@@ -13,7 +13,7 @@
     "db:push": "drizzle-kit push",
     "pages:build": "bun x @cloudflare/next-on-pages",
     "pages:preview": "bun run pages:build && wrangler pages dev .vercel/output/static",
-    "pages:deploy": "bun run pages:build && rm -rf dist_deploy && cp -R .vercel/output/static dist_deploy && wrangler pages deploy dist_deploy --branch=main",
+    "pages:deploy": "bun run pages:build && wrangler pages deploy .vercel/output/static --branch=main",
     "d1:create": "wrangler d1 create grepbase-db",
     "d1:migrate": "wrangler d1 migrations apply grepbase-db"
   },

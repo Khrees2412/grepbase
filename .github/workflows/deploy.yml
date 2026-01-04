@@ -33,14 +33,9 @@ jobs:
       - name: Build for Cloudflare Pages
         run: bun run pages:build
 
-      - name: Prepare Deployment Artifacts
-        run: |
-          rm -rf dist_deploy
-          cp -R .vercel/output/static dist_deploy
-
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy dist_deploy --project-name=grepbase
+          command: pages deploy .vercel/output/static --project-name=grepbase
