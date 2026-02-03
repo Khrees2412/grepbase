@@ -1,142 +1,227 @@
 # Grepbase
 
-Grepbase is an AI-powered code visualization tool designed to help developers understand codebases through a commit history view. It ingests GitHub repositories, parses their history, and uses advanced AI agents to explain code changes and project evolution commit-by-commit.
+A code search & analysis platform - monorepo with separate frontend and backend.
 
-Designed for ease of use and deep understanding, Grepbase supports both cloud-based AI providers (Google Gemini, OpenAI, Anthropic) via a Bring-Your-Own-Key (BYOK) model and also local LLMs (Ollama, LMStudio).
+## Why Separate Deployments?
 
-## Features
+Cloudflare Pages had deployment queue issues with the full-stack Next.js app. By separating:
+- **Frontend** (apps/web): Static Next.js → Deploy to Cloudflare Pages ✅
+- **Backend** (apps/api): Hono API → Deploy to Cloudflare Workers ✅
 
--   **Repository Ingestion**: Seamlessly fetch and store GitHub repository metadata, commit history, and file snapshots.
--   **AI-Powered Analysis**: specialized AI agents explain every commit, providing context and technical breakdowns of changes.
--   **"Book-Like" Navigation**: Browse a project's history chronologically, reading the story of its development.
--   **Multi-Provider AI Support**:
-    -   **Cloud**: Google Gemini (including Gemini 3/2.0), OpenAI (GPT-5/4o), Anthropic (Claude Opus/Sonnet).
-    -   **Local**: Ollama (LLaMA 3.2, Mistral), LMStudio.
--   **High Performance**: Built on Cloudflare's edge network (Pages, D1, KV) for speed and low latency.
--   **Production Ready**: Includes Rate Limiting, Analytics, and Request Validation.
--   **Modern Tech Stack**: Next.js 16 App Router, Drizzle ORM, and Vercel AI SDK.
-
-## Tech Stack
-
--   **Framework**: [Next.js 16](https://nextjs.org/) (App Router)
--   **Language**: TypeScript
--   **Infrastructure**: [Cloudflare Pages](https://pages.cloudflare.com/)
--   **Database**: [Cloudflare D1](https://developers.cloudflare.com/d1/) (Serverless SQLite)
--   **Caching**: [Cloudflare KV](https://developers.cloudflare.com/kv/)
--   **ORM**: [Drizzle ORM](https://orm.drizzle.team/)
--   **AI Integration**: [Vercel AI SDK](https://sdk.vercel.ai/docs)
--   **Styling**: Custom CSS Design System
--   **Package Manager**: [Bun](https://bun.com/)
-
-## generic Prerequisites
-
--   [Bun](https://bun.com/) (v1.0 or later)
--   [Cloudflare Account](https://dash.cloudflare.com/)
--   Generic knowledge of command line tools
-
-## Getting Started
-
-### 1. Clone the Repository
-
-```bash
-git clone https://github.com/khrees2412/grepbase.git
-cd grepbase
-```
-
-### 2. Install Dependencies
-
-```bash
-bun install
-```
-
-### 3. Environment Setup
-
-Create a `.env` file in the root directory. You will need Cloudflare credentials for the database and KV bindings.
-
-```env
-# Cloudflare D1 Credentials (for local Drizzle operations)
-CLOUDFLARE_ACCOUNT_ID=your_account_id
-CLOUDFLARE_D1_DATABASE_ID=your_database_id
-CLOUDFLARE_D1_TOKEN=your_api_token
-
-# AI Provider Keys (Optional - can be set in UI or Env)
-GOOGLE_GENERATIVE_AI_API_KEY=...
-OPENAI_API_KEY=...
-ANTHROPIC_API_KEY=...
-```
-
-### 4. Database Setup
-
-Initialize the D1 database. Ensure you are logged into Wrangler (`bunx wrangler login`).
-
-```bash
-# Create the database (if not exists)
-bun run d1:create
-
-# Apply migrations
-bun run d1:migrate
-```
-
-### 5. Run Locally
-
-You can run the application in standard Next.js dev mode:
-
-```bash
-bun run dev
-```
-
-**Note**: For full functionality involving Cloudflare D1 and KV bindings locally, use the Cloudflare Pages simulation:
-
-```bash
-bun run pages:preview
-```
-This builds the app using `@cloudflare/next-on-pages` and runs it using `wrangler pages dev`.
-
-### 6. Testing
-
-Run the test suite to verify functionality:
-
-```bash
-# Run unit tests
-bun test
-
-# Run linter
-bun run lint
-```
-
-## CI/CD
-
-This project uses GitHub Actions for continuous integration. Every push to `main` and every Pull Request triggers a workflow that:
-- Lints the codebase
-- Checks TypeScript types
-- Runs unit tests
-
+This fixes the queue issue while keeping all code in one repository.
 
 ## Project Structure
 
--   `src/app`: Next.js App Router pages and layouts.
--   `src/components`: Reusable UI components.
--   `src/db`: Database schema (`schema.ts`) and Drizzle configuration.
--   `src/services`: Core business logic (GitHub fetching, AI providers, Caching).
-    -   `ai-providers.ts`: Configuration for Gemini, OpenAI, Claude, etc.
-    -   `github.ts`: Logic for interacting with GitHub API.
--   `drizzle`: SQL migration files.
+```
+grepbase/
+├── apps/
+│   ├── web/              # Frontend (Static Next.js)
+│   │   ├── src/
+│   │   │   ├── app/      # Pages (no API routes)
+│   │   │   ├── components/
+│   │   │   └── lib/      # API client
+│   │   ├── public/
+│   │   ├── package.json
+│   │   └── next.config.ts (output: "export")
+│   │
+│   └── api/              # Backend (Hono)
+│       ├── src/
+│       │   ├── app.ts    # Hono app (shared)
+│       │   ├── index.ts  # Node server (local dev)
+│       │   ├── worker.ts # Cloudflare Worker entry
+│       │   ├── routes/   # API endpoints
+│       │   ├── db/       # Database schema
+│       │   ├── services/ # Business logic
+│       │   └── lib/      # Utilities
+│       ├── drizzle/      # Migrations
+│       ├── package.json
+│       └── tsup.config.ts
+│
+├── package.json          # Root workspace config
+└── README.md
+```
+
+## Getting Started
+
+### Install Dependencies
+
+```bash
+# Install all workspace dependencies
+bun install
+```
+
+### Development
+
+**Start both (in separate terminals):**
+
+```bash
+# Terminal 1 - Start API
+bun run dev:api
+# Runs on http://localhost:3001
+
+# Terminal 2 - Start Frontend
+bun run dev:web
+# Runs on http://localhost:3000
+```
+
+**Or start individually:**
+
+```bash
+# Just API
+cd apps/api
+bun install
+bun run dev
+
+# Just Frontend
+cd apps/web
+bun install
+bun run dev
+```
+
+### Environment Variables
+
+**API (local Node dev, apps/api/.env)**:
+```bash
+cp apps/api/.env.example apps/api/.env
+# Edit with your Cloudflare credentials
+```
+
+**API (Cloudflare Workers, apps/api/wrangler.toml + secrets)**:
+- Bind D1/KV/R2 in `apps/api/wrangler.toml`
+- Set secrets with `wrangler secret put GITHUB_TOKEN` (and AI keys if desired)
+
+**Frontend (apps/web/.env.local)**:
+```bash
+cp apps/web/.env.example apps/web/.env.local
+# Set NEXT_PUBLIC_API_URL=http://localhost:3001 for local dev
+```
 
 ## Deployment
 
-Deploying to Cloudflare Pages is straightforward.
+### Deploy Frontend to Cloudflare Pages
 
-1.  Connect your repository to Cloudflare Pages.
-2.  Set the **Build Command** to: `bun run pages:build`
-3.  Set the **Build Output Directory** to: `.vercel/output/static`
-4.  Bind your D1 Database (`grepbase-db`) and KV Namespace (`grepbase_cache`) in the Cloudflare Dashboard under **Settings > Functions**.
-5.  Add necessary Environment Variables (API Keys).
-
-Alternatively, deploy directly via CLI:
 ```bash
-bun run pages:deploy
+cd apps/web
+bun run build  # Creates static 'out' directory
 ```
 
-## Contributing
+**Cloudflare Pages Settings**:
+- Build command: `cd apps/web && bun install && bun run build`
+- Build output directory: `apps/web/out`
+- Root directory: `/`
+- Environment variable: `NEXT_PUBLIC_API_URL=https://your-worker.your-account.workers.dev`
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+### Deploy Backend to Cloudflare Workers
+
+```bash
+cd apps/api
+wrangler deploy
+```
+
+**Workers Settings**:
+- `apps/api/wrangler.toml` already includes D1/KV/R2 bindings
+- Set `FRONTEND_URL` var in `wrangler.toml` (or via dashboard)
+- Add secrets (GitHub, AI keys) with `wrangler secret put`
+
+## Database Migrations
+
+```bash
+# Generate migration after schema changes
+bun run db:generate
+
+# Apply to Cloudflare D1
+cd apps/api
+wrangler d1 migrations apply grepbase-db
+```
+
+## Architecture
+
+### Why This Works
+
+**Frontend (Static Next.js)**:
+- ✅ Pure React (no server components)
+- ✅ `output: "export"` in next.config.ts
+- ✅ No API routes (moved to backend)
+- ✅ Calls backend via `NEXT_PUBLIC_API_URL`
+- ✅ Deploys as static files to CF Pages
+
+**Backend (Hono API)**:
+- ✅ Runs on Cloudflare Workers with direct D1/KV/R2 bindings
+- ✅ Optional HTTP fallback for local Node dev
+- ✅ CORS configured for frontend
+- ✅ All Next.js API routes converted to Hono
+
+### Data Flow
+
+```
+User Browser
+    ↓
+Cloudflare Pages (Static Next.js)
+    ↓ HTTP (NEXT_PUBLIC_API_URL)
+Cloudflare Workers (Hono API)
+    ↓ Bindings
+D1 (Database) + KV (Cache) + R2 (Files)
+```
+
+## Commands Reference
+
+```bash
+# Development
+bun run dev          # Start frontend
+bun run dev:api      # Start backend
+bun run dev:web      # Start frontend
+
+# Build
+bun run build        # Build both
+bun run build:api    # Build backend only
+bun run build:web    # Build frontend only
+
+# Production
+bun run start:api    # Run backend in production
+bun run start:web    # Run frontend in production
+
+# Database
+bun run db:generate  # Generate migration
+bun run db:push      # Apply migration
+
+# Linting
+bun run lint         # Lint all workspaces
+```
+
+## Troubleshooting
+
+### "API not found" errors
+
+Make sure:
+1. Backend is running on port 3001
+2. Frontend has `NEXT_PUBLIC_API_URL=http://localhost:3001` in `.env.local`
+3. Check CORS settings in `apps/api/src/app.ts`
+
+### Cloudflare Pages queue issue
+
+This should be fixed now that frontend is static. If issues persist:
+- Ensure `output: "export"` in `apps/web/next.config.ts`
+- Remove any Server Components (`"use server"`)
+- Remove API routes from frontend
+
+### Database connection errors
+
+Backend needs Cloudflare bindings or HTTP credentials:
+- Workers: ensure D1/KV/R2 bindings and secrets are set
+- Local Node: add credentials to `apps/api/.env`
+
+## Next Steps
+
+1. ✅ Install dependencies: `bun install`
+2. ✅ Configure environment variables
+3. ✅ Start both services locally
+4. ⏳ Convert Next.js API routes to Hono (in progress)
+5. ⏳ Test full flow
+6. ⏳ Deploy to Cloudflare Pages + Workers
+
+## Cost
+
+- **Cloudflare Pages**: Free (500 builds/month)
+- **Cloudflare Workers**: Free tier
+- **Cloudflare D1/KV/R2**: Free tier
+- **Total**: $0/month 🎉

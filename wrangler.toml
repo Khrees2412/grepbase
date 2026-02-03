@@ -1,7 +1,7 @@
 name = "grepbase"
 compatibility_date = "2024-12-01"
 compatibility_flags = ["nodejs_compat"]
-pages_build_output_dir = ".vercel/output/static"
+pages_build_output_dir = "apps/web/out"
 
 # Analytics Engine binding for monitoring
 [[analytics_engine_datasets]]
@@ -16,12 +16,18 @@ enabled = true
 binding = "grepbase_db"
 database_name = "grepbase-db"
 database_id = "326233af-b937-4c0b-ab47-7349f251b961"
-migrations_dir = "drizzle"
+migrations_dir = "apps/api/drizzle"
 
 # KV Namespace binding
 [[kv_namespaces]]
 binding = "grepbase_cache"
 id = "6fbff750f7314c7ca6435e68966769bb"
+
+# R2 bucket binding for large file storage
+# Note: Create buckets with: wrangler r2 bucket create <bucket-name>
+[[r2_buckets]]
+binding = "grepbase_storage"
+bucket_name = "grepbase-files"
 
 # Environment-specific configuration
 [env.production]
@@ -31,7 +37,7 @@ vars = { ENVIRONMENT = "production" }
 binding = "grepbase_db"
 database_name = "grepbase-db"
 database_id = "326233af-b937-4c0b-ab47-7349f251b961"
-migrations_dir = "drizzle"
+migrations_dir = "apps/api/drizzle"
 
 [[env.production.kv_namespaces]]
 binding = "grepbase_cache"
@@ -40,6 +46,10 @@ id = "6fbff750f7314c7ca6435e68966769bb"
 [[env.production.analytics_engine_datasets]]
 binding = "ANALYTICS"
 
+[[env.production.r2_buckets]]
+binding = "grepbase_storage"
+bucket_name = "grepbase-files-prod"
+
 [env.preview]
 vars = { ENVIRONMENT = "preview" }
 
@@ -47,7 +57,7 @@ vars = { ENVIRONMENT = "preview" }
 binding = "grepbase_db"
 database_name = "grepbase-db"
 database_id = "326233af-b937-4c0b-ab47-7349f251b961"
-migrations_dir = "drizzle"
+migrations_dir = "apps/api/drizzle"
 
 [[env.preview.kv_namespaces]]
 binding = "grepbase_cache"
@@ -55,3 +65,7 @@ id = "6fbff750f7314c7ca6435e68966769bb"
 
 [[env.preview.analytics_engine_datasets]]
 binding = "ANALYTICS"
+
+[[env.preview.r2_buckets]]
+binding = "grepbase_storage"
+bucket_name = "grepbase-files-preview"

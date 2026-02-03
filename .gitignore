@@ -48,3 +48,19 @@ next-env.d.ts
 *.db
 *.db-shm
 *.db-wal
+
+# build artifacts
+dist/
+dist_deploy/
+apps/web/out/
+apps/web/.next/
+apps/api/dist/
+
+# documentation artifacts (keep only README.md)
+DEPLOY*.md
+STATUS.md
+IMPLEMENTATION*.md
+QUICK_FIX.md
+FINAL_SOLUTION.md
+USE_EXISTING_API.md
+CLEANUP_SUMMARY.md
